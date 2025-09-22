@@ -213,21 +213,6 @@ async def close_ticket(interaction: Interaction):
     await interaction.response.send_message("🔒 Ticket closed for traders, still visible to middlemen.", ephemeral=True)
 
 # -----------------------------
-# Text command fallbacks
-# -----------------------------
-@bot.command(name="delete")
-async def text_delete(ctx):
-    await delete_ticket.callback(ctx)
-
-@bot.command(name="handle")
-async def text_handle(ctx):
-    await handle_ticket.callback(ctx)
-
-@bot.command(name="close")
-async def text_close(ctx):
-    await close_ticket.callback(ctx)
-
-# -----------------------------
 # Message triggers
 # -----------------------------
 @bot.event
@@ -254,9 +239,8 @@ async def on_message(message):
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     try:
-        guild = discord.Object(id=GUILD_ID)
-        await bot.tree.clear_commands(guild=guild)
-        await bot.tree.sync(guild=guild)
+        # Only sync commands, do NOT clear
+        await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
         print("✅ Slash commands synced.")
     except Exception as e:
         print("Sync error:", e)
