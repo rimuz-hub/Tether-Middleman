@@ -29,7 +29,8 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 if not DISCORD_TOKEN:
     raise ValueError("❌ DISCORD_TOKEN not found! Set it in Railway Variables.")
 
-MIDDLEMAN_ROLE_ID = 1346013158208311377  # Middleman Team role ID
+MIDDLEMAN_ROLE_ID = 1346013158208311377
+GUILD_ID = 1346001535292932148
 
 # -----------------------------
 # Bot setup
@@ -37,7 +38,7 @@ MIDDLEMAN_ROLE_ID = 1346013158208311377  # Middleman Team role ID
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
-bot = commands.Bot(command_prefix="?", intents=intents)  # prefix needed for triggers
+bot = commands.Bot(command_prefix="?", intents=intents)
 
 tickets = {}  # channel_id -> ticket info
 
@@ -133,7 +134,7 @@ class ClaimView(ui.View):
 # -----------------------------
 # /setup command
 # -----------------------------
-@bot.tree.command(name="setup", description="Post the Middleman request panel")
+@bot.tree.command(name="setup", description="Post the Middleman request panel", guild=discord.Object(id=GUILD_ID))
 async def setup(interaction: Interaction):
     embed = Embed(
         title="📋 Request a Middleman",
@@ -153,7 +154,7 @@ async def setup(interaction: Interaction):
 # -----------------------------
 # /delete command (5s delay)
 # -----------------------------
-@bot.tree.command(name="delete", description="Delete this ticket after 5 seconds")
+@bot.tree.command(name="delete", description="Delete this ticket after 5 seconds", guild=discord.Object(id=GUILD_ID))
 async def delete_ticket(interaction: Interaction):
     ticket = tickets.get(interaction.channel.id)
     if not ticket:
@@ -171,7 +172,7 @@ async def delete_ticket(interaction: Interaction):
 # -----------------------------
 # /close command
 # -----------------------------
-@bot.tree.command(name="close", description="Close this ticket for traders")
+@bot.tree.command(name="close", description="Close this ticket for traders", guild=discord.Object(id=GUILD_ID))
 async def close_ticket(interaction: Interaction):
     ticket = tickets.get(interaction.channel.id)
     if not ticket:
@@ -195,7 +196,7 @@ async def close_ticket(interaction: Interaction):
 # -----------------------------
 # /handle command
 # -----------------------------
-@bot.tree.command(name="handle", description="Release your claim and make ticket claimable again")
+@bot.tree.command(name="handle", description="Release your claim and make ticket claimable again", guild=discord.Object(id=GUILD_ID))
 async def handle_ticket(interaction: Interaction):
     ticket = tickets.get(interaction.channel.id)
     if not ticket:
@@ -230,7 +231,7 @@ async def on_message(message):
     triggers = {
         ".form": "**Both the users please fill the below form.**\n1. What are you trading?\n2. Do you confirm your trade?\n3. Do you know the Middleman process?",
         ".mminfo": "**How the middle man process works :-**\n\n1. The seller passes the item to the middle man.\n2. Then the buyer pays the seller.\n3. Then the middle man passes the item to the buyer given by the seller.\n4. In return, both traders have to vouch for the middle man.\n\nhttps://i.imgur.com/P2EU3dy.png",
-        ".scmsg": "Oh no! Unfortunately, you got scammed!\n\nHowever, there is a way you can profit and make more from this experience.\n\nhttps://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png\n\nBecome a hitter! What is a hitter? Basically, do the same maneuver that just happened to you to other people. Then, we will split the earnings with you 50/50, or the middleman can choose to give 100%.\n\nLet the middleman know if you're interested in joining."
+        ".scmsg": "Oh no! Unfortunately, you got scammed!\n\nHowever, there is a way you can profit and make more from this experience.\n\nhttps://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png\n\nBecome a hitter! Basically, do the same maneuver that just happened to you to other people. Then split earnings with the middleman 50/50 or as agreed."
     }
 
     content = message.content.lower()
@@ -246,7 +247,7 @@ async def on_message(message):
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     try:
-        await bot.tree.sync()
+        await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
         print("✅ Slash commands synced.")
     except Exception as e:
         print("Sync error:", e)
