@@ -37,7 +37,7 @@ MIDDLEMAN_ROLE_ID = 1346013158208311377  # Middleman Team role ID
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="?", intents=intents)  # prefix needed for triggers
 
 tickets = {}  # channel_id -> ticket info
 
@@ -151,37 +151,34 @@ async def setup(interaction: Interaction):
     await interaction.response.send_message(embed=embed, view=view)
 
 # -----------------------------
-# ?delete command (5s delay)
+# /delete command (5s delay)
 # -----------------------------
-@bot.command(name="delete")
-async def delete_ticket(ctx):
-    ticket = tickets.get(ctx.channel.id)
+@bot.tree.command(name="delete", description="Delete this ticket after 5 seconds")
+async def delete_ticket(interaction: Interaction):
+    ticket = tickets.get(interaction.channel.id)
     if not ticket:
-        await ctx.send("❌ This is not a ticket channel.")
+        await interaction.response.send_message("❌ This is not a ticket channel.", ephemeral=True)
         return
 
-    # Warning message
-    await ctx.send("🗑 Ticket will be deleted in 5 seconds...")
+    await interaction.response.send_message("🗑 Ticket will be deleted in 5 seconds...", ephemeral=True)
     await asyncio.sleep(5)
-
-    # Delete the channel
     try:
-        await ctx.channel.delete()
-        tickets.pop(ctx.channel.id, None)
+        await interaction.channel.delete()
+        tickets.pop(interaction.channel.id, None)
     except Exception as e:
         print("Failed to delete channel:", e)
 
 # -----------------------------
-# ?close command
+# /close command
 # -----------------------------
-@bot.command(name="close")
-async def close_ticket(ctx):
-    ticket = tickets.get(ctx.channel.id)
+@bot.tree.command(name="close", description="Close this ticket for traders")
+async def close_ticket(interaction: Interaction):
+    ticket = tickets.get(interaction.channel.id)
     if not ticket:
-        await ctx.send("❌ This is not a ticket channel.")
+        await interaction.response.send_message("❌ This is not a ticket channel.", ephemeral=True)
         return
 
-    guild = ctx.guild
+    guild = interaction.guild
     creator = guild.get_member(ticket["creator"])
     other = guild.get_member(ticket["other"])
     overwrites = {guild.default_role: discord.PermissionOverwrite(view_channel=False)}
@@ -192,37 +189,35 @@ async def close_ticket(ctx):
     mm_role = guild.get_role(MIDDLEMAN_ROLE_ID)
     if mm_role:
         overwrites[mm_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
-    await ctx.channel.edit(overwrites=overwrites)
-    await ctx.send("🔒 Ticket closed for traders, still visible to middlemen.")
+    await interaction.channel.edit(overwrites=overwrites)
+    await interaction.response.send_message("🔒 Ticket closed for traders, still visible to middlemen.", ephemeral=True)
 
 # -----------------------------
-# ?handle command
+# /handle command
 # -----------------------------
-@bot.command(name="handle")
-async def handle_ticket(ctx):
-    ticket = tickets.get(ctx.channel.id)
+@bot.tree.command(name="handle", description="Release your claim and make ticket claimable again")
+async def handle_ticket(interaction: Interaction):
+    ticket = tickets.get(interaction.channel.id)
     if not ticket:
-        await ctx.send("❌ This is not a ticket channel.")
+        await interaction.response.send_message("❌ This is not a ticket channel.", ephemeral=True)
         return
 
-    if ticket.get("claimer") != ctx.author.id:
-        await ctx.send("❌ Only the middleman who claimed this ticket can use ?handle.")
+    if ticket.get("claimer") != interaction.user.id:
+        await interaction.response.send_message("❌ Only the middleman who claimed this ticket can use this.", ephemeral=True)
         return
 
-    # Reset claim
     ticket["claimed"] = False
     ticket["claimer"] = None
 
-    # Reset channel name
     try:
-        await ctx.channel.edit(name=f"ticket-{ticket['creator_name']}")
+        await interaction.channel.edit(name=f"ticket-{ticket['creator_name']}")
     except Exception as e:
         print("Failed to rename channel:", e)
 
-    await ctx.send(f"⚠️ {ctx.author.mention} released the ticket. Middleman Team can claim it again.")
-    mm_role = ctx.guild.get_role(MIDDLEMAN_ROLE_ID)
+    await interaction.response.send_message(f"⚠️ {interaction.user.mention} released the ticket. Middleman Team can claim it again.", ephemeral=True)
+    mm_role = interaction.guild.get_role(MIDDLEMAN_ROLE_ID)
     if mm_role:
-        await ctx.channel.send(f"{mm_role.mention} Please handle this ticket!")
+        await interaction.channel.send(f"{mm_role.mention} Please handle this ticket!")
 
 # -----------------------------
 # Message triggers
