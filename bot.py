@@ -7,7 +7,7 @@ from threading import Thread
 import asyncio
 
 # -----------------------------
-# Keep-alive server
+# Keep-alive server (for Railway)
 # -----------------------------
 app = Flask("")
 
@@ -132,7 +132,7 @@ class ClaimView(ui.View):
         await interaction.response.send_message("You have claimed this ticket.", ephemeral=True)
 
 # -----------------------------
-# /setup command
+# /setup
 # -----------------------------
 @bot.tree.command(name="setup", description="Post the Middleman request panel", guild=discord.Object(id=GUILD_ID))
 async def setup(interaction: Interaction):
@@ -152,7 +152,7 @@ async def setup(interaction: Interaction):
     await interaction.response.send_message(embed=embed, view=view)
 
 # -----------------------------
-# /delete command (5s delay)
+# /delete (5s delay)
 # -----------------------------
 @bot.tree.command(name="delete", description="Delete this ticket after 5 seconds", guild=discord.Object(id=GUILD_ID))
 async def delete_ticket(interaction: Interaction):
@@ -170,7 +170,7 @@ async def delete_ticket(interaction: Interaction):
         print("Failed to delete channel:", e)
 
 # -----------------------------
-# /close command
+# /close
 # -----------------------------
 @bot.tree.command(name="close", description="Close this ticket for traders", guild=discord.Object(id=GUILD_ID))
 async def close_ticket(interaction: Interaction):
@@ -194,9 +194,9 @@ async def close_ticket(interaction: Interaction):
     await interaction.response.send_message("🔒 Ticket closed for traders, still visible to middlemen.", ephemeral=True)
 
 # -----------------------------
-# /handle command
+# /handle
 # -----------------------------
-@bot.tree.command(name="handle", description="Release your claim and make ticket claimable again", guild=discord.Object(id=GUILD_ID))
+@bot.tree.command(name="handle", description="Release claim and make ticket claimable again", guild=discord.Object(id=GUILD_ID))
 async def handle_ticket(interaction: Interaction):
     ticket = tickets.get(interaction.channel.id)
     if not ticket:
@@ -218,7 +218,7 @@ async def handle_ticket(interaction: Interaction):
     await interaction.response.send_message(f"⚠️ {interaction.user.mention} released the ticket. Middleman Team can claim it again.", ephemeral=True)
     mm_role = interaction.guild.get_role(MIDDLEMAN_ROLE_ID)
     if mm_role:
-        await interaction.channel.send(f"{mm_role.mention} Please handle this ticket!")
+        await interaction.channel.send(f"{mm_role.mention} Please handle this ticket!", view=ClaimView(interaction.channel.id))
 
 # -----------------------------
 # Message triggers
@@ -247,6 +247,8 @@ async def on_message(message):
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     try:
+        # Clear old guild commands and sync fresh
+        await bot.tree.clear_commands(guild=discord.Object(id=GUILD_ID))
         await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
         print("✅ Slash commands synced.")
     except Exception as e:
