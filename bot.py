@@ -7,7 +7,7 @@ from threading import Thread
 import asyncio
 
 # -----------------------------
-# Keep-alive server (for Railway)
+# Keep-alive server (Railway)
 # -----------------------------
 app = Flask("")
 
@@ -27,7 +27,7 @@ def keep_alive():
 # -----------------------------
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 if not DISCORD_TOKEN:
-    raise ValueError("❌ DISCORD_TOKEN not found! Set it in Railway Variables.")
+    raise ValueError("❌ DISCORD_TOKEN not found!")
 
 MIDDLEMAN_ROLE_ID = 1346013158208311377
 GUILD_ID = 1346001535292932148
@@ -121,7 +121,11 @@ class ClaimView(ui.View):
             return
 
         ticket = tickets.get(self.channel_id)
-        if not ticket or ticket["claimed"]:
+        if not ticket:
+            await interaction.response.send_message("❌ Ticket not found.", ephemeral=True)
+            return
+
+        if ticket["claimed"]:
             await interaction.response.send_message("❌ This ticket is already claimed.", ephemeral=True)
             return
 
@@ -186,10 +190,16 @@ async def handle_ticket(interaction: Interaction):
         await interaction.channel.edit(name=f"ticket-{ticket['creator_name']}")
     except:
         pass
-    await interaction.response.send_message(f"⚠️ {interaction.user.mention} released the ticket. Middleman Team can claim it again.", ephemeral=True)
+
+    await interaction.response.send_message("⚠️ You released this ticket. Middleman Team can claim it again.", ephemeral=True)
     mm_role = interaction.guild.get_role(MIDDLEMAN_ROLE_ID)
     if mm_role:
-        await interaction.channel.send(f"{mm_role.mention} Please handle this ticket!", view=ClaimView(interaction.channel.id))
+        # Remove old view and attach fresh ClaimView
+        async for msg in interaction.channel.history(limit=20):
+            if msg.author == bot.user:
+                await msg.edit(view=ClaimView(interaction.channel.id))
+                await msg.channel.send(f"{mm_role.mention} Please handle this ticket!")
+                break
 
 @bot.tree.command(name="close", description="Close this ticket for traders", guild=discord.Object(id=GUILD_ID))
 async def close_ticket(interaction: Interaction):
@@ -211,26 +221,6 @@ async def close_ticket(interaction: Interaction):
         overwrites[mm_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
     await interaction.channel.edit(overwrites=overwrites)
     await interaction.response.send_message("🔒 Ticket closed for traders, still visible to middlemen.", ephemeral=True)
-
-# -----------------------------
-# Message triggers
-# -----------------------------
-@bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
-
-    triggers = {
-        ".form": "**Both the users please fill the below form.**\n1. What are you trading?\n2. Do you confirm your trade?\n3. Do you know the Middleman process?",
-        ".mminfo": "**How the middle man process works :-**\n\n1. The seller passes the item to the middle man.\n2. Then the buyer pays the seller.\n3. Then the middle man passes the item to the buyer given by the seller.\n4. In return, both traders have to vouch for the middle man.\n\nhttps://i.imgur.com/P2EU3dy.png",
-        ".scmsg": "Oh no! Unfortunately, you got scammed!\n\nHowever, there is a way you can profit and make more from this experience.\n\nhttps://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png\n\nBecome a hitter! Basically, do the same maneuver that just happened to you to other people. Then split earnings with the middleman 50/50 or as agreed."
-    }
-
-    content = message.content.lower()
-    if content in triggers:
-        await message.channel.send(triggers[content])
-
-    await bot.process_commands(message)
 
 # -----------------------------
 # On ready
