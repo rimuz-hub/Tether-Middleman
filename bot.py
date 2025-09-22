@@ -2,12 +2,12 @@ import discord
 from discord.ext import commands
 from discord import ui, Interaction, Embed
 import os
-from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
+import asyncio
 
 # -----------------------------
-# Keep-alive web server (for Replit)
+# Keep-alive server
 # -----------------------------
 app = Flask("")
 
@@ -25,10 +25,9 @@ def keep_alive():
 # -----------------------------
 # Load token
 # -----------------------------
-load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 if not DISCORD_TOKEN:
-    raise ValueError("❌ DISCORD_TOKEN not found in .env!")
+    raise ValueError("❌ DISCORD_TOKEN not found! Set it in Railway Variables.")
 
 MIDDLEMAN_ROLE_ID = 1346013158208311377  # Middleman Team role ID
 
@@ -37,30 +36,20 @@ MIDDLEMAN_ROLE_ID = 1346013158208311377  # Middleman Team role ID
 # -----------------------------
 intents = discord.Intents.default()
 intents.members = True
-intents.message_content = True  # Required for triggers
-bot = commands.Bot(command_prefix="?", intents=intents)
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 tickets = {}  # channel_id -> ticket info
 
 # -----------------------------
-# Modal for Ticket Creation
+# Ticket Modal
 # -----------------------------
 class TicketModal(ui.Modal, title="Request Middleman"):
     def __init__(self):
         super().__init__()
-        self.trader_id_input = ui.TextInput(
-            label="Other Trader Discord ID",
-            placeholder="Enter Discord ID",
-            required=True
-        )
-        self.giving_input = ui.TextInput(
-            label="What are you giving?",
-            required=True
-        )
-        self.receiving_input = ui.TextInput(
-            label="What are you receiving?",
-            required=True
-        )
+        self.trader_id_input = ui.TextInput(label="Other Trader Discord ID", placeholder="Enter Discord ID", required=True)
+        self.giving_input = ui.TextInput(label="What are you giving?", required=True)
+        self.receiving_input = ui.TextInput(label="What are you receiving?", required=True)
         self.add_item(self.trader_id_input)
         self.add_item(self.giving_input)
         self.add_item(self.receiving_input)
@@ -92,30 +81,31 @@ class TicketModal(ui.Modal, title="Request Middleman"):
 
         tickets[channel.id] = {
             "creator": interaction.user.id,
+            "creator_name": interaction.user.name,
             "other": other_id,
             "giving": self.giving_input.value,
             "receiving": self.receiving_input.value,
-            "claimed": False
+            "claimed": False,
+            "claimer": None
         }
 
         embed = Embed(
-            title="🎫 New Middleman Request",
+            title="🎮 New Middleman Request",
             description=(
                 f"**Creator:** {interaction.user.mention}\n"
                 f"**Other Trader:** <@{other_id}>\n\n"
                 f"**Giving:** {self.giving_input.value}\n"
                 f"**Receiving:** {self.receiving_input.value}\n\n"
-                f"➡️ A middleman will claim this ticket soon."
+                f"⚠️ A middleman will claim this ticket soon."
             ),
             color=discord.Color.green()
         )
 
-        # Ping Middleman Team
         await channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(channel.id))
         await interaction.response.send_message(f"✅ Ticket created: {channel.mention}", ephemeral=True)
 
 # -----------------------------
-# Claim button
+# Claim Button
 # -----------------------------
 class ClaimView(ui.View):
     def __init__(self, channel_id):
@@ -135,6 +125,7 @@ class ClaimView(ui.View):
             return
 
         ticket["claimed"] = True
+        ticket["claimer"] = interaction.user.id
         await interaction.channel.edit(name=f"claimed-by-{interaction.user.name}")
         await interaction.channel.send(f"✅ This ticket will be handled by {interaction.user.mention}.")
         await interaction.response.send_message("You have claimed this ticket.", ephemeral=True)
@@ -145,7 +136,7 @@ class ClaimView(ui.View):
 @bot.tree.command(name="setup", description="Post the Middleman request panel")
 async def setup(interaction: Interaction):
     embed = Embed(
-        title="💼 Request a Middleman",
+        title="📋 Request a Middleman",
         description="Click the green button below to request a middleman for your trade.",
         color=discord.Color.green()
     )
@@ -160,38 +151,78 @@ async def setup(interaction: Interaction):
     await interaction.response.send_message(embed=embed, view=view)
 
 # -----------------------------
-# ?delete command
+# ?delete command (5s delay)
 # -----------------------------
 @bot.command(name="delete")
 async def delete_ticket(ctx):
-    if ctx.channel.id in tickets:
+    ticket = tickets.get(ctx.channel.id)
+    if not ticket:
+        await ctx.send("❌ This is not a ticket channel.")
+        return
+
+    # Warning message
+    await ctx.send("🗑 Ticket will be deleted in 5 seconds...")
+    await asyncio.sleep(5)
+
+    # Delete the channel
+    try:
         await ctx.channel.delete()
         tickets.pop(ctx.channel.id, None)
-    else:
-        await ctx.send("❌ This is not a ticket channel.")
+    except Exception as e:
+        print("Failed to delete channel:", e)
 
 # -----------------------------
 # ?close command
 # -----------------------------
 @bot.command(name="close")
 async def close_ticket(ctx):
-    if ctx.channel.id in tickets:
-        ticket = tickets[ctx.channel.id]
-        guild = ctx.guild
-        creator = guild.get_member(ticket["creator"])
-        other = guild.get_member(ticket["other"])
-        overwrites = {guild.default_role: discord.PermissionOverwrite(view_channel=False)}
-        if creator:
-            overwrites[creator] = discord.PermissionOverwrite(view_channel=True, send_messages=False)
-        if other:
-            overwrites[other] = discord.PermissionOverwrite(view_channel=True, send_messages=False)
-        mm_role = guild.get_role(MIDDLEMAN_ROLE_ID)
-        if mm_role:
-            overwrites[mm_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
-        await ctx.channel.edit(overwrites=overwrites)
-        await ctx.send("🔒 Ticket closed for traders, still visible to middlemen.")
-    else:
+    ticket = tickets.get(ctx.channel.id)
+    if not ticket:
         await ctx.send("❌ This is not a ticket channel.")
+        return
+
+    guild = ctx.guild
+    creator = guild.get_member(ticket["creator"])
+    other = guild.get_member(ticket["other"])
+    overwrites = {guild.default_role: discord.PermissionOverwrite(view_channel=False)}
+    if creator:
+        overwrites[creator] = discord.PermissionOverwrite(view_channel=True, send_messages=False)
+    if other:
+        overwrites[other] = discord.PermissionOverwrite(view_channel=True, send_messages=False)
+    mm_role = guild.get_role(MIDDLEMAN_ROLE_ID)
+    if mm_role:
+        overwrites[mm_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
+    await ctx.channel.edit(overwrites=overwrites)
+    await ctx.send("🔒 Ticket closed for traders, still visible to middlemen.")
+
+# -----------------------------
+# ?handle command
+# -----------------------------
+@bot.command(name="handle")
+async def handle_ticket(ctx):
+    ticket = tickets.get(ctx.channel.id)
+    if not ticket:
+        await ctx.send("❌ This is not a ticket channel.")
+        return
+
+    if ticket.get("claimer") != ctx.author.id:
+        await ctx.send("❌ Only the middleman who claimed this ticket can use ?handle.")
+        return
+
+    # Reset claim
+    ticket["claimed"] = False
+    ticket["claimer"] = None
+
+    # Reset channel name
+    try:
+        await ctx.channel.edit(name=f"ticket-{ticket['creator_name']}")
+    except Exception as e:
+        print("Failed to rename channel:", e)
+
+    await ctx.send(f"⚠️ {ctx.author.mention} released the ticket. Middleman Team can claim it again.")
+    mm_role = ctx.guild.get_role(MIDDLEMAN_ROLE_ID)
+    if mm_role:
+        await ctx.channel.send(f"{mm_role.mention} Please handle this ticket!")
 
 # -----------------------------
 # Message triggers
@@ -201,35 +232,20 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.lower() == ".form":
-        await message.channel.send(
-            "**Both the users please fill the below form.**\n"
-            "1. What are you trading?\n"
-            "2. Do you confirm your trade?\n"
-            "3. Do you know the Middleman process?"
-        )
-    elif message.content.lower() == ".mminfo":
-        await message.channel.send(
-            "**How the middle man process works :-**\n\n"
-            "1. The seller passes the item to the middle man.\n"
-            "2. Then the buyer pays the seller.\n"
-            "3. Then the middle man passes the item to the buyer given by the seller.\n"
-            "4. In return, both traders have to vouch for the middle man.\n\n"
-            "https://i.imgur.com/P2EU3dy.png"
-        )
-    elif message.content.lower() == ".scmsg":
-        await message.channel.send(
-            "Oh no! Unfortunately, you got scammed!\n\n"
-            "However, there is a way you can profit and make more from this experience.\n\n"
-            "https://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png\n\n"
-            "Become a hitter! What is a hitter? Basically, do the same maneuver that just happened to you to other people. Then, we will split the earnings with you 50/50, or the middleman can choose to give 100%.\n\n"
-            "Let the middleman know if you're interested in joining."
-        )
+    triggers = {
+        ".form": "**Both the users please fill the below form.**\n1. What are you trading?\n2. Do you confirm your trade?\n3. Do you know the Middleman process?",
+        ".mminfo": "**How the middle man process works :-**\n\n1. The seller passes the item to the middle man.\n2. Then the buyer pays the seller.\n3. Then the middle man passes the item to the buyer given by the seller.\n4. In return, both traders have to vouch for the middle man.\n\nhttps://i.imgur.com/P2EU3dy.png",
+        ".scmsg": "Oh no! Unfortunately, you got scammed!\n\nHowever, there is a way you can profit and make more from this experience.\n\nhttps://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png\n\nBecome a hitter! What is a hitter? Basically, do the same maneuver that just happened to you to other people. Then, we will split the earnings with you 50/50, or the middleman can choose to give 100%.\n\nLet the middleman know if you're interested in joining."
+    }
+
+    content = message.content.lower()
+    if content in triggers:
+        await message.channel.send(triggers[content])
 
     await bot.process_commands(message)
 
 # -----------------------------
-# On Ready
+# On ready
 # -----------------------------
 @bot.event
 async def on_ready():
@@ -243,5 +259,5 @@ async def on_ready():
 # -----------------------------
 # Run bot
 # -----------------------------
-keep_alive()  # Keep the Replit server alive
+keep_alive()
 bot.run(DISCORD_TOKEN)
