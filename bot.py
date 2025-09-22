@@ -1,13 +1,14 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import ui, Interaction, Embed
 import os
+from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
 import asyncio
 
 # -----------------------------
-# Keep-alive server (Railway)
+# Keep-alive web server (for Replit)
 # -----------------------------
 app = Flask("")
 
@@ -25,12 +26,13 @@ def keep_alive():
 # -----------------------------
 # Load token
 # -----------------------------
+load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 if not DISCORD_TOKEN:
-    raise ValueError("❌ DISCORD_TOKEN not found!")
+    raise ValueError("❌ DISCORD_TOKEN not found in .env!")
 
-MIDDLEMAN_ROLE_ID = 1346013158208311377
-GUILD_ID = 1346001535292932148  # your server ID
+GUILD_ID = 1346001535292932148  # Your server ID
+MIDDLEMAN_ROLE_ID = 1346013158208311377  # Middleman Team role ID
 
 # -----------------------------
 # Bot setup
@@ -38,7 +40,7 @@ GUILD_ID = 1346001535292932148  # your server ID
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
-bot = commands.Bot(command_prefix="?", intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 tickets = {}  # channel_id -> ticket info
 
@@ -58,9 +60,7 @@ class TicketModal(ui.Modal, title="Request Middleman"):
     async def on_submit(self, interaction: Interaction):
         try:
             other_id = int(self.trader_id_input.value.strip())
-            other_member = interaction.guild.get_member(other_id)
-            if not other_member:
-                other_member = await interaction.guild.fetch_member(other_id)
+            other_member = interaction.guild.get_member(other_id) or await interaction.guild.fetch_member(other_id)
         except:
             await interaction.response.send_message("❌ Invalid Discord ID.", ephemeral=True)
             return
@@ -82,7 +82,6 @@ class TicketModal(ui.Modal, title="Request Middleman"):
 
         tickets[channel.id] = {
             "creator": interaction.user.id,
-            "creator_name": interaction.user.name,
             "other": other_id,
             "giving": self.giving_input.value,
             "receiving": self.receiving_input.value,
@@ -91,7 +90,7 @@ class TicketModal(ui.Modal, title="Request Middleman"):
         }
 
         embed = Embed(
-            title="🎮 New Middleman Request",
+            title="🎫 New Middleman Request",
             description=(
                 f"**Creator:** {interaction.user.mention}\n"
                 f"**Other Trader:** <@{other_id}>\n\n"
@@ -106,7 +105,7 @@ class TicketModal(ui.Modal, title="Request Middleman"):
         await interaction.response.send_message(f"✅ Ticket created: {channel.mention}", ephemeral=True)
 
 # -----------------------------
-# Claim Button
+# Claim button
 # -----------------------------
 class ClaimView(ui.View):
     def __init__(self, channel_id):
@@ -125,85 +124,75 @@ class ClaimView(ui.View):
             await interaction.response.send_message("❌ Ticket not found.", ephemeral=True)
             return
 
-        if ticket["claimed"]:
-            await interaction.response.send_message("❌ This ticket is already claimed.", ephemeral=True)
-            return
-
         ticket["claimed"] = True
         ticket["claimer"] = interaction.user.id
-        try:
-            await interaction.channel.edit(name=f"claimed-by-{interaction.user.name}")
-        except:
-            pass
+        await interaction.channel.edit(name=f"claimed-by-{interaction.user.name}")
         await interaction.channel.send(f"✅ This ticket will be handled by {interaction.user.mention}.")
         await interaction.response.send_message("You have claimed this ticket.", ephemeral=True)
 
 # -----------------------------
-# Slash commands
+# /setup command
 # -----------------------------
 @bot.tree.command(name="setup", description="Post the Middleman request panel", guild=discord.Object(id=GUILD_ID))
 async def setup(interaction: Interaction):
     embed = Embed(
-        title="📋 Request a Middleman",
+        title="📩 Request a Middleman",
         description="Click the green button below to request a middleman for your trade.",
         color=discord.Color.green()
     )
     view = ui.View()
     button = ui.Button(label="Request a Middleman", style=discord.ButtonStyle.success)
-
     async def callback(inter2: Interaction):
         await inter2.response.send_modal(TicketModal())
-
     button.callback = callback
     view.add_item(button)
     await interaction.response.send_message(embed=embed, view=view)
 
-@bot.tree.command(name="delete", description="Delete this ticket after 5 seconds", guild=discord.Object(id=GUILD_ID))
-async def delete_ticket(interaction: Interaction):
-    ticket = tickets.get(interaction.channel.id)
+# -----------------------------
+# /handle command
+# -----------------------------
+@bot.tree.command(name="handle", description="Ping middleman team and make ticket claimable", guild=discord.Object(id=GUILD_ID))
+async def handle(interaction: Interaction):
+    channel_id = interaction.channel.id
+    ticket = tickets.get(channel_id)
     if not ticket:
         await interaction.response.send_message("❌ This is not a ticket channel.", ephemeral=True)
         return
 
-    await interaction.response.send_message("🗑 Ticket will be deleted in 5 seconds...", ephemeral=True)
-    await asyncio.sleep(5)
-    try:
-        await interaction.channel.delete()
-        tickets.pop(interaction.channel.id, None)
-    except Exception as e:
-        print("Failed to delete channel:", e)
-
-@bot.tree.command(name="handle", description="Release claim and make ticket claimable again", guild=discord.Object(id=GUILD_ID))
-async def handle_ticket(interaction: Interaction):
-    ticket = tickets.get(interaction.channel.id)
-    if not ticket:
-        await interaction.response.send_message("❌ This is not a ticket channel.", ephemeral=True)
-        return
-
-    if ticket.get("claimer") != interaction.user.id:
-        await interaction.response.send_message("❌ Only the middleman who claimed this ticket can release it.", ephemeral=True)
-        return
-
+    # Reset claim
     ticket["claimed"] = False
     ticket["claimer"] = None
 
-    try:
-        await interaction.channel.edit(name=f"ticket-{ticket['creator_name']}")
-    except:
-        pass
-
-    mm_role = interaction.guild.get_role(MIDDLEMAN_ROLE_ID)
-    claim_embed = Embed(
-        title="🎮 Ticket Released",
-        description=f"{mm_role.mention} Please handle this ticket!",
-        color=discord.Color.yellow()
+    embed = Embed(
+        title="⚠️ Ticket needs handling",
+        description="Please handle this ticket. The ticket is now claimable again.",
+        color=discord.Color.orange()
     )
-    await interaction.channel.send(embed=claim_embed, view=ClaimView(interaction.channel.id))
-    await interaction.response.send_message("✅ Ticket released. Middleman Team can claim it again.", ephemeral=True)
+    await interaction.channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(channel_id))
+    await interaction.response.send_message("✅ Middleman team has been pinged, ticket is claimable again.", ephemeral=True)
 
-@bot.tree.command(name="close", description="Close this ticket for traders", guild=discord.Object(id=GUILD_ID))
-async def close_ticket(interaction: Interaction):
-    ticket = tickets.get(interaction.channel.id)
+# -----------------------------
+# /delete command
+# -----------------------------
+@bot.tree.command(name="delete", description="Delete this ticket after 5 seconds", guild=discord.Object(id=GUILD_ID))
+async def delete(interaction: Interaction):
+    channel_id = interaction.channel.id
+    if channel_id not in tickets:
+        await interaction.response.send_message("❌ This is not a ticket channel.", ephemeral=True)
+        return
+
+    await interaction.response.send_message("⏱ Ticket will be deleted in 5 seconds...")
+    await asyncio.sleep(5)
+    await interaction.channel.delete()
+    tickets.pop(channel_id, None)
+
+# -----------------------------
+# /close command
+# -----------------------------
+@bot.tree.command(name="close", description="Close ticket for traders, visible to middleman", guild=discord.Object(id=GUILD_ID))
+async def close(interaction: Interaction):
+    channel_id = interaction.channel.id
+    ticket = tickets.get(channel_id)
     if not ticket:
         await interaction.response.send_message("❌ This is not a ticket channel.", ephemeral=True)
         return
@@ -219,20 +208,41 @@ async def close_ticket(interaction: Interaction):
     mm_role = guild.get_role(MIDDLEMAN_ROLE_ID)
     if mm_role:
         overwrites[mm_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
+
     await interaction.channel.edit(overwrites=overwrites)
     await interaction.response.send_message("🔒 Ticket closed for traders, still visible to middlemen.", ephemeral=True)
 
 # -----------------------------
-# On ready: sync and remove duplicates
+# Message triggers
+# -----------------------------
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+
+    triggers = {
+        ".form": "**Both the users please fill the below form.**\n1. What are you trading?\n2. Do you confirm your trade?\n3. Do you know the Middleman process?",
+        ".mminfo": "**How the middle man process works :-**\n\n1. The seller passes the item to the middle man.\n2. Then the buyer pays the seller.\n3. Then the middle man passes the item to the buyer given by the seller.\n4. In return, both traders have to vouch for the middle man.\n\nhttps://i.imgur.com/P2EU3dy.png",
+        ".scmsg": "Oh no! Unfortunately, you got scammed!\n\nHowever, there is a way you can profit and make more from this experience.\n\nhttps://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png\n\nBecome a hitter! What is a hitter? Basically, do the same maneuver that just happened to you to other people. Then, we will split the earnings with you 50/50, or the middleman can choose to give 100%.\n\nLet the middleman know if you're interested in joining."
+    }
+
+    content = message.content.lower()
+    if content in triggers:
+        await message.channel.send(triggers[content])
+
+    await bot.process_commands(message)
+
+# -----------------------------
+# On Ready
 # -----------------------------
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     guild_obj = discord.Object(id=GUILD_ID)
-    # Clear previous guild commands once
+    # Clear old guild commands (prevent duplicates)
     await bot.tree.clear_commands(guild=guild_obj)
     await bot.tree.sync(guild=guild_obj)
-    print("✅ Guild-specific commands synced. Duplicates cleared.")
+    print("✅ Slash commands synced for guild.")
 
 # -----------------------------
 # Run bot
