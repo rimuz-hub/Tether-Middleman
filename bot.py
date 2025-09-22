@@ -30,7 +30,7 @@ if not DISCORD_TOKEN:
     raise ValueError("❌ DISCORD_TOKEN not found!")
 
 MIDDLEMAN_ROLE_ID = 1346013158208311377
-GUILD_ID = 1346001535292932148
+GUILD_ID = 1346001535292932148  # your server ID
 
 # -----------------------------
 # Bot setup
@@ -181,25 +181,25 @@ async def handle_ticket(interaction: Interaction):
         return
 
     if ticket.get("claimer") != interaction.user.id:
-        await interaction.response.send_message("❌ Only the middleman who claimed this ticket can use this.", ephemeral=True)
+        await interaction.response.send_message("❌ Only the middleman who claimed this ticket can release it.", ephemeral=True)
         return
 
     ticket["claimed"] = False
     ticket["claimer"] = None
+
     try:
         await interaction.channel.edit(name=f"ticket-{ticket['creator_name']}")
     except:
         pass
 
-    await interaction.response.send_message("⚠️ You released this ticket. Middleman Team can claim it again.", ephemeral=True)
     mm_role = interaction.guild.get_role(MIDDLEMAN_ROLE_ID)
-    if mm_role:
-        # Remove old view and attach fresh ClaimView
-        async for msg in interaction.channel.history(limit=20):
-            if msg.author == bot.user:
-                await msg.edit(view=ClaimView(interaction.channel.id))
-                await msg.channel.send(f"{mm_role.mention} Please handle this ticket!")
-                break
+    claim_embed = Embed(
+        title="🎮 Ticket Released",
+        description=f"{mm_role.mention} Please handle this ticket!",
+        color=discord.Color.yellow()
+    )
+    await interaction.channel.send(embed=claim_embed, view=ClaimView(interaction.channel.id))
+    await interaction.response.send_message("✅ Ticket released. Middleman Team can claim it again.", ephemeral=True)
 
 @bot.tree.command(name="close", description="Close this ticket for traders", guild=discord.Object(id=GUILD_ID))
 async def close_ticket(interaction: Interaction):
@@ -223,17 +223,16 @@ async def close_ticket(interaction: Interaction):
     await interaction.response.send_message("🔒 Ticket closed for traders, still visible to middlemen.", ephemeral=True)
 
 # -----------------------------
-# On ready
+# On ready: sync and remove duplicates
 # -----------------------------
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
-    try:
-        # Only sync commands, do NOT clear
-        await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
-        print("✅ Slash commands synced.")
-    except Exception as e:
-        print("Sync error:", e)
+    guild_obj = discord.Object(id=GUILD_ID)
+    # Clear previous guild commands once
+    await bot.tree.clear_commands(guild=guild_obj)
+    await bot.tree.sync(guild=guild_obj)
+    print("✅ Guild-specific commands synced. Duplicates cleared.")
 
 # -----------------------------
 # Run bot
