@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord import ui, Interaction, Embed
 import os
 from dotenv import load_dotenv
@@ -8,7 +8,7 @@ from threading import Thread
 import asyncio
 
 # -----------------------------
-# Keep-alive web server (for Replit)
+# Keep-alive web server (for Replit/Railway)
 # -----------------------------
 app = Flask("")
 
@@ -32,7 +32,7 @@ if not DISCORD_TOKEN:
     raise ValueError("❌ DISCORD_TOKEN not found in .env!")
 
 MIDDLEMAN_ROLE_ID = 1346013158208311377  # Middleman Team role ID
-GUILD_ID = 1346001535292932148  # Your guild/server ID
+GUILD_ID = 1346001535292932148  # Your server ID
 
 # -----------------------------
 # Bot setup
@@ -41,6 +41,7 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 bot = commands.Bot(command_prefix="?", intents=intents)
+
 tickets = {}  # channel_id -> ticket info
 
 # -----------------------------
@@ -143,11 +144,11 @@ class ClaimView(ui.View):
 # ?setup command
 # -----------------------------
 @bot.command(name="setup")
-async def setup(ctx):
+async def setup_panel(ctx):
     embed = Embed(
-        title="📩 Request a Middleman",
+        title="📋 Request a Middleman",
         description="Click the green button below to request a middleman for your trade.",
-        color=discord.Color.green()
+        color=discord.Color.blue()
     )
     view = ui.View()
     button = ui.Button(label="Request a Middleman", style=discord.ButtonStyle.success)
@@ -165,7 +166,7 @@ async def setup(ctx):
 @bot.command(name="delete")
 async def delete_ticket(ctx):
     if ctx.channel.id in tickets:
-        await ctx.send("⏳ Ticket will be deleted in 5 seconds...")
+        msg = await ctx.send("⏳ Ticket will be deleted in 5 seconds...")
         await asyncio.sleep(5)
         await ctx.channel.delete()
         tickets.pop(ctx.channel.id, None)
@@ -177,57 +178,47 @@ async def delete_ticket(ctx):
 # -----------------------------
 @bot.command(name="handle")
 async def handle_ticket(ctx):
-    if ctx.channel.id in tickets:
-        ticket = tickets[ctx.channel.id]
-        ticket["claimed"] = False  # make reclaimable
-        role = ctx.guild.get_role(MIDDLEMAN_ROLE_ID)
-        embed = Embed(
-            title="⚠️ Handle Ticket",
-            description=f"<@&{MIDDLEMAN_ROLE_ID}> please handle this ticket.",
-            color=discord.Color.orange()
-        )
-        await ctx.send(embed=embed, view=ClaimView(ctx.channel.id))
-    else:
-        await ctx.send("❌ This is not a ticket channel.")
+    ticket = tickets.get(ctx.channel.id)
+    if not ticket or not ticket["claimed"]:
+        await ctx.send("❌ This ticket is not claimed yet.")
+        return
+
+    ticket["claimed"] = False
+    mm_role = ctx.guild.get_role(MIDDLEMAN_ROLE_ID)
+    embed = Embed(
+        title="🟣 Ticket needs handling",
+        description=f"Please handle this ticket: {ctx.channel.mention}",
+        color=discord.Color.purple()
+    )
+    await ctx.channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(ctx.channel.id))
+    await ctx.send("✅ Ticket is now reclaimable by another middleman.")
 
 # -----------------------------
-# Message triggers with colored embeds
+# Trigger messages
 # -----------------------------
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
 
+    triggers = {
+        ".form": {"text": "**Please fill the form below:**\n1. What are you trading?\n2. Do you confirm your trade?\n3. Do you know the Middleman process?", "color": discord.Color.green(), "image": None},
+        ".mminfo": {"text": "**How the middleman process works:**\n1. Seller passes item to middleman.\n2. Buyer pays seller.\n3. Middleman delivers item to buyer.\n4. Both traders vouch for middleman.", "color": discord.Color.purple(), "image": "https://i.imgur.com/P2EU3dy.png"},
+        ".scmsg": {"text": "Oh no! Unfortunately, you got scammed!\nHowever, there is a way to profit from this experience.", "color": discord.Color.red(), "image": "https://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png"},
+    }
+
     content = message.content.lower()
-
-    if content == ".form":
-        embed = Embed(
-            title="Form Instructions",
-            description="**Both the users please fill the below form.**\n1. What are you trading?\n2. Do you confirm your trade?\n3. Do you know the Middleman process?",
-            color=discord.Color.lime()
-        )
-        await message.channel.send(embed=embed)
-
-    elif content == ".mminfo":
-        embed = Embed(
-            title="Middleman Process Info",
-            description="**How the middle man process works :-**\n\n1. The seller passes the item to the middle man.\n2. Then the buyer pays the seller.\n3. Then the middle man passes the item to the buyer given by the seller.\n4. In return, both traders have to vouch for the middle man.\n\nhttps://i.imgur.com/P2EU3dy.png",
-            color=discord.Color.purple()
-        )
-        await message.channel.send(embed=embed)
-
-    elif content == ".scmsg":
-        embed = Embed(
-            title="Scam Alert",
-            description="Oh no! Unfortunately, you got scammed!\n\nHowever, there is a way you can profit and make more from this experience.\n\nhttps://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png\n\nBecome a hitter! What is a hitter? Basically, do the same maneuver that just happened to you to other people. Then, we will split the earnings with you 50/50, or the middleman can choose to give 100%.\n\nLet the middleman know if you're interested in joining.",
-            color=discord.Color.red()
-        )
+    if content in triggers:
+        info = triggers[content]
+        embed = Embed(title="", description=info["text"], color=info["color"])
+        if info["image"]:
+            embed.set_image(url=info["image"])
         await message.channel.send(embed=embed)
 
     await bot.process_commands(message)
 
 # -----------------------------
-# On Ready
+# On ready
 # -----------------------------
 @bot.event
 async def on_ready():
@@ -236,5 +227,5 @@ async def on_ready():
 # -----------------------------
 # Run bot
 # -----------------------------
-keep_alive()
+keep_alive()  # Start the web server
 bot.run(DISCORD_TOKEN)
