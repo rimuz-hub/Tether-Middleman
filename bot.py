@@ -202,56 +202,79 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# --- Add this after your persistent triggers setup ---
+import discord
+from discord import ui, Embed
+from discord.ext import commands
 
-class ScmsgJoinLeaveView(discord.ui.View):
+# --- Confirm Leave View (ephemeral) ---
+class ConfirmBanView(ui.View):
+    def __init__(self, *, timeout=30):
+        super().__init__(timeout=timeout)
+
+    @ui.button(label="Confirm Leave (Ban me)", style=discord.ButtonStyle.danger, custom_id="confirm_leave")
+    async def confirm(self, interaction: discord.Interaction, button: ui.Button):
+        guild = interaction.guild
+        member = interaction.user
+        me = guild.me or guild.get_member(interaction.client.user.id)
+
+        # Permission checks
+        if not me.guild_permissions.ban_members:
+            await interaction.response.send_message("❌ I don't have permission to ban members.", ephemeral=True)
+            return
+        if member.guild_permissions.administrator or member.guild_permissions.manage_guild:
+            await interaction.response.send_message("❌ You can't ban staff members.", ephemeral=True)
+            return
+
+        try:
+            await member.ban(reason="Pressed Leave via ?scmsg")
+            await interaction.response.send_message("⚠️ You have been banned from the server.", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ I can't ban you.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Could not ban: {e}", ephemeral=True)
+
+    @ui.button(label="Cancel", style=discord.ButtonStyle.secondary, custom_id="cancel_leave")
+    async def cancel(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message("✅ Leave cancelled.", ephemeral=True)
+        self.stop()
+
+# --- Main Join/Leave View ---
+class ScmsgJoinLeaveView(ui.View):
     def __init__(self, *, timeout=None):
         super().__init__(timeout=timeout)
 
-    @discord.ui.button(label="Join", style=discord.ButtonStyle.success, custom_id="scmsg_join")
-    async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message(f"👋 Hi {interaction.user.mention}, perfect descsion, welcome! https://discord.gg/TesnPTbtc8", ephemeral=True)
+    @ui.button(label="Join", style=discord.ButtonStyle.success, custom_id="scmsg_join")
+    async def join(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message(f"👋 Hi {interaction.user.mention}, !", ephemeral=True)
 
-    @discord.ui.button(label="Leave", style=discord.ButtonStyle.danger, custom_id="scmsg_leave")
-    async def leave(self, interaction: discord.Interaction, button: discord.ui.Button):
-        try:
-            await interaction.user.ban(reason="Pressed the Leave button")
-            await interaction.response.send_message(f"⚠️ {interaction.user.mention} has been banned.", ephemeral=True)
-        except discord.Forbidden:
-            await interaction.response.send_message("❌ I don't have permission to ban this user.", ephemeral=True)
+    @ui.button(label="Leave", style=discord.ButtonStyle.danger, custom_id="scmsg_leave")
+    async def leave(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message(
+            "⚠️ Are you sure you want to leave (this will ban you)? Confirm below.",
+            ephemeral=True,
+            view=ConfirmBanView()
+        )
 
-# --- Update your on_message handler to handle .scmsg ---
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
+# --- ?scmsg command ---
+@bot.command(name="scmsg")
+async def scmsg_command(ctx: commands.Context):
+    embed = Embed(
+        title="🚨 Action Message",
+        description=("Oh no! Unfortunately, you got scammed!"
+        "However, there is a way you can profit and make more from this experience."
+        "Become a hitter! What is a hitter? Basically, do the same thing that just happened to you and scam other people. Then, Middleman  will split the earnings with you 50/50, or the middleman can choose to give 100%." \
+        "**Do not make any fuss out of ticket it will result in ban**"
+        
+            "Choose an action below:\n"
+            "- **Join** — join us and start bilduing buisness (RECOMMENDED).\n"
+            "- **Leave** — confirm to ban yourself from the server (NOT RECOMMENDED).\n\n"
+            "Press the buttons to proceed. Leave requires confirmation."
+        ),
+        color=0xFF0000
+    )
+    view = ScmsgJoinLeaveView(timeout=None)
+    await ctx.send(embed=embed, view=view)
 
-    content = message.content.lower()
-
-    # Handle persistent triggers
-    if content in triggers and content in enabled_triggers:
-        info = triggers[content]
-        # Special case for .scmsg
-        if content == ".scmsg":
-            embed = discord.Embed(
-                title="🚨 Get Scammed!",
-                description=(
-                 "Oh no! Unfortunately, you got scammed!"
-                 "However, there is a way you can profit and make more from this experience."
-                 "Become a hitter! What is a hitter. Basically, do the same thing that just happened to you and scam other people. Then, Middleman  will split the earnings with you 50/50, or the middleman can choose to give 100%."
-                 " **Do not make any fuss out of ticket it will result in ban**"
-                ),
-                color=0xFF0000
-            )
-            view = ScmsgJoinLeaveView(timeout=None)
-            await message.channel.send(embed=embed, view=view)
-        else:
-            embed = discord.Embed(description=info["text"], color=info["color"])
-            if info.get("image"):
-                embed.set_image(url=info["image"])
-            await message.channel.send(embed=embed)
-
-    await bot.process_commands(message)
 
 
 # -----------------------------
