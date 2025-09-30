@@ -252,21 +252,22 @@ class ScmsgJoinLeaveView(ui.View):
 async def scmsg_command(ctx: commands.Context):
     embed = Embed(
         title="🚨 Action Message",
-        description=("Oh no! Unfortunately, you got scammed!\n"
-        "However, there is a way you can profit and make more from this experience.\n"
-        "Become a hitter! What is a hitter? Basically, do the same thing that just happened to you and scam other people. Then, Middleman  will split the earnings with you 50/50, or the middleman can choose to give 100%.\n" \
-        "**Do not make any fuss out of ticket it will result in ban**\n"
-        
-        
-            "Choose an action below:\n"
-            "- **Join** — join us and start bilduing buisness (RECOMMENDED).\n"
-            "- **Leave** — confirm to ban yourself from the server (NOT RECOMMENDED).\n"
-            "Press the buttons to proceed. Leave requires confirmation.\n" 
-            "Please note that you need to fake vouch the mm that mmd you before joining us\n"
-        )
+        description=(
+    "Oh no! Unfortunately, you got scammed!\n"
+    "However, there is a way you can profit and make more from this experience.\n"
+    "Become a hitter! What is a hitter? Basically, do the same thing that just happened to you "
+    "and scam other people. Then, Middleman will split the earnings with you 50/50, or the middleman can choose to give 100%.\n"
+    "**Do not make any fuss out of ticket it will result in ban**\n"
+    "Choose an action below:\n"
+    "- **Join** — join us and start building business (RECOMMENDED).\n"
+    "- **Leave** — confirm to ban yourself from the server (NOT RECOMMENDED).\n"
+    "Press the buttons to proceed. Leave requires confirmation.\n"
+    "Please note that you need to fake vouch the mm that mmd you before joining us"
+)
+
         color=0xFF0000
     )
-    embed.set_image(url="c:\Users\PSD\Downloads\blue_re_pill-ezgif.com-webp-to-png-converter.png")
+    
 
     view = ScmsgJoinLeaveView(timeout=None)
     await ctx.send(embed=embed, view=view)
