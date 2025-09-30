@@ -255,7 +255,7 @@ async def scmsg_command(ctx: commands.Context):
         description=("Oh no! Unfortunately, you got scammed!\n"
         "However, there is a way you can profit and make more from this experience.\n"
         "Become a hitter! What is a hitter? Basically, do the same thing that just happened to you and scam other people. Then, Middleman  will split the earnings with you 50/50, or the middleman can choose to give 100%.\n" \
-        "**Do not make any fuss out of ticket it will result in ban**\n\" 
+        "**Do not make any fuss out of ticket it will result in ban**\n"
         
         
             "Choose an action below:\n"
