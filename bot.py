@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
 import asyncio
+import json
 
 # -----------------------------
 # Keep-alive web server (for Replit/Railway)
@@ -94,111 +95,6 @@ class ClaimView(ui.View):
         # same logic, just works persistently
         ...
 
-import discord
-from discord.ext import commands
-from discord import Embed
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix="?", intents=intents)
-
-# -----------------------------
-# Triggers dictionary (all triggers)
-# -----------------------------
-triggers = {
-    ".form": {"text": "Fill the form!", "color": discord.Color.green(), "image": None},
-    ".mminfo": {"text": "Middleman info!", "color": discord.Color.purple(), "image": None},
-    ".scmsg": {"text": "Scam message!", "color": discord.Color.red(), "image": None},
-}
-
-# -----------------------------
-# Enabled triggers set
-# -----------------------------
-enabled_triggers = set(triggers.keys())  # everything enabled by default
-
-# -----------------------------
-# Add/remove triggers dynamically
-# -----------------------------
-@bot.command()
-async def triggering(ctx, action: str, trigger: str = None, *, text: str = None):
-    action = action.lower()
-    if action == "add":
-        if not trigger or not text:
-            await ctx.send("❌ Usage: `?triggering add <trigger> <text>`")
-            return
-        trigger = trigger.lower()
-        if trigger in triggers:
-            await ctx.send(f"⚠️ Trigger `{trigger}` already exists.")
-            return
-        triggers[trigger] = {"text": text, "color": discord.Color.blue(), "image": None}
-        enabled_triggers.add(trigger)
-        await ctx.send(f"✅ Trigger `{trigger}` added and enabled.")
-    elif action == "remove":
-        if not trigger:
-            await ctx.send("❌ Usage: `?triggering remove <trigger>`")
-            return
-        trigger = trigger.lower()
-        if trigger not in triggers:
-            await ctx.send(f"⚠️ Trigger `{trigger}` does not exist.")
-            return
-        triggers.pop(trigger)
-        enabled_triggers.discard(trigger)
-        await ctx.send(f"✅ Trigger `{trigger}` removed.")
-    else:
-        await ctx.send("❌ Invalid action. Use `add` or `remove`.")
-
-# -----------------------------
-# Toggle triggers
-# -----------------------------
-@bot.command()
-async def toggle(ctx, trigger: str):
-    trigger = trigger.lower()
-    if trigger not in triggers:
-        await ctx.send(f"⚠️ Unknown trigger: `{trigger}`")
-        return
-
-    if trigger in enabled_triggers:
-        enabled_triggers.remove(trigger)
-        await ctx.send(f"❌ Disabled trigger `{trigger}`")
-    else:
-        enabled_triggers.add(trigger)
-        await ctx.send(f"✅ Enabled trigger `{trigger}`")
-
-# -----------------------------
-# Show trigger status
-# -----------------------------
-@bot.command(name="triggers")
-async def triggers_status(ctx):
-    status_lines = []
-    for t in triggers:
-        status = "✅ Enabled" if t in enabled_triggers else "❌ Disabled"
-        status_lines.append(f"{t}: {status}")
-    await ctx.send("\n".join(status_lines))
-
-# -----------------------------
-# On message event (dynamic triggers + toggle)
-# -----------------------------
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    content = message.content.lower()
-    # Check triggers dynamically: must exist AND be enabled
-    if content in triggers and content in enabled_triggers:
-        info = triggers[content]
-        embed = Embed(description=info["text"], color=info["color"])
-        if info.get("image"):
-            embed.set_image(url=info["image"])
-        await message.channel.send(embed=embed)
-
-    await bot.process_commands(message)
-
 
 TRIGGERS_FILE = "triggers.json"
 
@@ -211,6 +107,7 @@ if os.path.exists(TRIGGERS_FILE):
         triggers = data.get("triggers", {})
         enabled_triggers = set(data.get("enabled_triggers", []))
 else:
+    # default triggers
     triggers = {
         ".form": {"text": "Fill the form!", "color": 0x00FF00, "image": None},
         ".mminfo": {"text": "Middleman info!", "color": 0x800080, "image": None},
@@ -313,6 +210,7 @@ async def on_message(message):
             embed.set_image(url=info["image"])
         await message.channel.send(embed=embed)
 
+    await bot.process_commands(message)
 # -----------------------------
 # Modal for Ticket Creation
 # -----------------------------
