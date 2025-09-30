@@ -265,6 +265,8 @@ async def scmsg_command(ctx: commands.Context):
         ),
         color=0xFF0000
     )
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1422626833949523970/1422627422502916177/blue_re_pill.png?ex=68dd5c88&is=68dc0b08&hm=ff126cab9520776178918e0109c62563e65acd9fd078717c5787bd0a19d175f6")
+
     view = ScmsgJoinLeaveView(timeout=None)
     await ctx.send(embed=embed, view=view)
 
