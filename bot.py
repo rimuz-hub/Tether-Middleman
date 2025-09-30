@@ -46,15 +46,7 @@ bot = commands.Bot(command_prefix="?", intents=intents)
 tickets = {}  # channel_id -> ticket info
 
 
-# -----------------------------
-# Persistent Views Setup
-# -----------------------------
-@bot.event
-async def on_ready():
-    # Re-add persistent views
-    bot.add_view(ClaimView(channel_id=None))  # For claim button
-    bot.add_view(RequestView())               # For setup button
-    print(f"✅ Logged in as {bot.user}")
+
 
 
 # -----------------------------
@@ -455,6 +447,9 @@ async def on_message(message):
 # -----------------------------
 @bot.event
 async def on_ready():
+    # Re-add persistent views
+    bot.add_view(ClaimView(channel_id=None))  # For claim button
+    bot.add_view(RequestView())               # For setup button
     print(f"✅ Logged in as {bot.user}")
 
 # -----------------------------
