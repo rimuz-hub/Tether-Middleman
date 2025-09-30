@@ -97,49 +97,51 @@ class ClaimView(ui.View):
 ### Toggle Triggers
 
 
-# -----------------------------
-# Triggers config
-# -----------------------------
-enabled_triggers = {
-    ".form": True,
-    ".mminfo": True,
-    ".scmsg": True,
-}
+# ------------------------------
+# ENABLED TRIGGERS STORE
+# ------------------------------
+enabled_triggers = {".form", ".mminfo", ".scmsg"}  # default: all ON
 
-@bot.command(name="toggle")
-async def toggle_trigger(ctx, trigger: str):
-    trigger = trigger.lower()
-    if trigger not in enabled_triggers:
-        await ctx.send("❌ Invalid trigger.")
+# ------------------------------
+# TOGGLE COMMAND
+# ------------------------------
+@bot.command()
+async def toggle(ctx, trigger: str):
+    trigger = trigger.strip().lower()
+
+    if trigger not in {".form", ".mminfo", ".scmsg"}:
+        await ctx.send(f"⚠️ Unknown trigger: `{trigger}`")
         return
-    enabled_triggers[trigger] = not enabled_triggers[trigger]
-    status = "enabled ✅" if enabled_triggers[trigger] else "disabled ❌"
-    await ctx.send(f"Trigger `{trigger}` is now {status}.")
 
+    if trigger in enabled_triggers:
+        enabled_triggers.remove(trigger)
+        await ctx.send(f"❌ Disabled trigger `{trigger}`")
+    else:
+        enabled_triggers.add(trigger)
+        await ctx.send(f"✅ Enabled trigger `{trigger}`")
 
-# -----------------------------
-# On message with toggle check
-# -----------------------------
+# ------------------------------
+# ON_MESSAGE TRIGGERS
+# ------------------------------
 @bot.event
 async def on_message(message):
-    if message.author == bot.user:
+    if message.author.bot:
         return
 
-    triggers = {
-        ".form": {"text": "**Please fill the form below:**\n1. What are you trading?\n2. Do you confirm your trade?\n3. Do you know the Middleman process?", "color": discord.Color.green(), "image": None},
-        ".mminfo": {"text": "**How the middleman process works:**\n1. Seller passes item to middleman.\n2. Buyer pays seller.\n3. Middleman delivers item to buyer.\n4. Both traders vouch for middleman.", "color": discord.Color.purple(), "image": "https://i.imgur.com/P2EU3dy.png"},
-        ".scmsg": {"text": "Oh no! Unfortunately, you got scammed!\nHowever, there is a way to profit from this experience.", "color": discord.Color.red(), "image": "https://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png"},
-    }
-
     content = message.content.lower()
-    if content in triggers and enabled_triggers.get(content, False):
-        info = triggers[content]
-        embed = Embed(title="", description=info["text"], color=info["color"])
-        if info["image"]:
-            embed.set_image(url=info["image"])
-        await message.channel.send(embed=embed)
 
+    if content.startswith(".form") and ".form" in enabled_triggers:
+        await message.channel.send("📋 Form trigger is active!")
+
+    if content.startswith(".mminfo") and ".mminfo" in enabled_triggers:
+        await message.channel.send("ℹ️ Middleman info trigger is active!")
+
+    if content.startswith(".scmsg") and ".scmsg" in enabled_triggers:
+        await message.channel.send("🚨 Scam message trigger is active!")
+
+    # let commands still run
     await bot.process_commands(message)
+
 
 
 # -----------------------------
