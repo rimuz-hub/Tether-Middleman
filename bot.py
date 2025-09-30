@@ -252,16 +252,16 @@ class ScmsgJoinLeaveView(ui.View):
 async def scmsg_command(ctx: commands.Context):
     embed = Embed(
         title="🚨 Action Message",
-        description=("Oh no! Unfortunately, you got scammed!"
-        "However, there is a way you can profit and make more from this experience."
-        "Become a hitter! What is a hitter? Basically, do the same thing that just happened to you and scam other people. Then, Middleman  will split the earnings with you 50/50, or the middleman can choose to give 100%." \
-        "**Do not make any fuss out of ticket it will result in ban**" \
+        description=("Oh no! Unfortunately, you got scammed!\n"
+        "However, there is a way you can profit and make more from this experience.\n\n"
+        "Become a hitter! What is a hitter? Basically, do the same thing that just happened to you and scam other people. Then, Middleman  will split the earnings with you 50/50, or the middleman can choose to give 100%.\n\n\n" \
+        "**Do not make any fuss out of ticket it will result in ban**\n\n\n\n" \
         
         
-            "Choose an action below:"
-            "- **Join** — join us and start bilduing buisness (RECOMMENDED)."
-            "- **Leave** — confirm to ban yourself from the server (NOT RECOMMENDED)."
-            "Press the buttons to proceed. Leave requires confirmation."
+            "Choose an action below:\n\n\n\n\n"
+            "- **Join** — join us and start bilduing buisness (RECOMMENDED).\n\n\n\n\n\n"
+            "- **Leave** — confirm to ban yourself from the server (NOT RECOMMENDED).\n\n\n\n\n\n\n"
+            "Press the buttons to proceed. Leave requires confirmation.\n\n\n\n\n\n\n\n"
         ),
         color=0xFF0000
     )
