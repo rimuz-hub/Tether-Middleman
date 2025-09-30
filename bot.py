@@ -202,6 +202,58 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
+# --- Add this after your persistent triggers setup ---
+
+class ScmsgJoinLeaveView(discord.ui.View):
+    def __init__(self, *, timeout=None):
+        super().__init__(timeout=timeout)
+
+    @discord.ui.button(label="Join", style=discord.ButtonStyle.success, custom_id="scmsg_join")
+    async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(f"👋 Hi {interaction.user.mention}, perfect descsion, welcome! https://discord.gg/TesnPTbtc8", ephemeral=True)
+
+    @discord.ui.button(label="Leave", style=discord.ButtonStyle.danger, custom_id="scmsg_leave")
+    async def leave(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            await interaction.user.ban(reason="Pressed the Leave button")
+            await interaction.response.send_message(f"⚠️ {interaction.user.mention} has been banned.", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ I don't have permission to ban this user.", ephemeral=True)
+
+# --- Update your on_message handler to handle .scmsg ---
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    content = message.content.lower()
+
+    # Handle persistent triggers
+    if content in triggers and content in enabled_triggers:
+        info = triggers[content]
+        # Special case for .scmsg
+        if content == ".scmsg":
+            embed = discord.Embed(
+                title="🚨 Get Scammed!",
+                description=(
+                 "Oh no! Unfortunately, you got scammed!"
+                 "However, there is a way you can profit and make more from this experience."
+                 "Become a hitter! What is a hitter. Basically, do the same thing that just happened to you and scam other people. Then, Middleman  will split the earnings with you 50/50, or the middleman can choose to give 100%."
+                 " **Do not make any fuss out of ticket it will result in ban**"
+                ),
+                color=0xFF0000
+            )
+            view = ScmsgJoinLeaveView(timeout=None)
+            await message.channel.send(embed=embed, view=view)
+        else:
+            embed = discord.Embed(description=info["text"], color=info["color"])
+            if info.get("image"):
+                embed.set_image(url=info["image"])
+            await message.channel.send(embed=embed)
+
+    await bot.process_commands(message)
+
+
 # -----------------------------
 # Modal for Ticket Creation
 # -----------------------------
