@@ -71,7 +71,7 @@ class RequestView(ui.View):
 # -----------------------------
 # Updated ?setup command
 # -----------------------------
-@bot.command(name="setup")
+@bot.command(name="panel")
 async def setup_panel(ctx):
     embed = Embed(
         title="📋 Request a Middleman",
