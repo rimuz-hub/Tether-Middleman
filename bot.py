@@ -256,16 +256,16 @@ async def scmsg_command(ctx: commands.Context):
         "However, there is a way you can profit and make more from this experience."
         "Become a hitter! What is a hitter? Basically, do the same thing that just happened to you and scam other people. Then, Middleman  will split the earnings with you 50/50, or the middleman can choose to give 100%." \
         "**Do not make any fuss out of ticket it will result in ban**" \
-        "https://cdn.discordapp.com/attachments/1422626833949523970/1422627422502916177/blue_re_pill.png?ex=68dd5c88&is=68dc0b08&hm=ff126cab9520776178918e0109c62563e65acd9fd078717c5787bd0a19d175f6"
         
-            "Choose an action below:\n"
-            "- **Join** — join us and start bilduing buisness (RECOMMENDED).\n"
-            "- **Leave** — confirm to ban yourself from the server (NOT RECOMMENDED).\n\n"
+        
+            "Choose an action below:"
+            "- **Join** — join us and start bilduing buisness (RECOMMENDED)."
+            "- **Leave** — confirm to ban yourself from the server (NOT RECOMMENDED)."
             "Press the buttons to proceed. Leave requires confirmation."
         ),
         color=0xFF0000
     )
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1422626833949523970/1422627422502916177/blue_re_pill.png?ex=68dd5c88&is=68dc0b08&hm=ff126cab9520776178918e0109c62563e65acd9fd078717c5787bd0a19d175f6")
+    embed.set_image(url="https://imgur.com/a/L1smMAS")
 
     view = ScmsgJoinLeaveView(timeout=None)
     await ctx.send(embed=embed, view=view)
