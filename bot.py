@@ -263,7 +263,7 @@ async def scmsg_command(ctx: commands.Context):
             "- **Leave** — confirm to ban yourself from the server (NOT RECOMMENDED).\n"
             "Press the buttons to proceed. Leave requires confirmation.\n" 
             "Please note that you need to fake vouch the mm that mmd you before joining us\n"
-        ),
+        )
         color=0xFF0000
     )
     embed.set_image(url="c:\Users\PSD\Downloads\blue_re_pill-ezgif.com-webp-to-png-converter.png")
