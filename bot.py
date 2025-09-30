@@ -94,22 +94,61 @@ class ClaimView(ui.View):
         # same logic, just works persistently
         ...
 
-### Toggle Triggers
+## -----------------------------
+# Triggers dictionary
+# -----------------------------
+triggers = {
+    ".form": {"text": "Fill the form!", "color": discord.Color.green(), "image": None},
+    ".mminfo": {"text": "Middleman info!", "color": discord.Color.purple(), "image": None},
+    ".scmsg": {"text": "Scam message!", "color": discord.Color.red(), "image": None},
+}
 
+# -----------------------------
+# Enabled triggers set
+# -----------------------------
+enabled_triggers = set(triggers.keys())
 
-# ------------------------------
-# ENABLED TRIGGERS STORE
-# ------------------------------
-enabled_triggers = {".form", ".mminfo", ".scmsg"}  # default: all ON
+# -----------------------------
+# Add new trigger
+# -----------------------------
+@bot.command()
+async def triggering(ctx, action: str, trigger: str = None, *, text: str = None):
+    action = action.lower()
 
-# ------------------------------
-# TOGGLE COMMAND
-# ------------------------------
+    if action == "add":
+        if not trigger or not text:
+            await ctx.send("❌ Usage: `?triggering add <trigger> <text>`")
+            return
+        trigger = trigger.lower()
+        if trigger in triggers:
+            await ctx.send(f"⚠️ Trigger `{trigger}` already exists.")
+            return
+        triggers[trigger] = {"text": text, "color": discord.Color.blue(), "image": None}
+        enabled_triggers.add(trigger)
+        await ctx.send(f"✅ Trigger `{trigger}` added and enabled.")
+    
+    elif action == "remove":
+        if not trigger:
+            await ctx.send("❌ Usage: `?triggering remove <trigger>`")
+            return
+        trigger = trigger.lower()
+        if trigger not in triggers:
+            await ctx.send(f"⚠️ Trigger `{trigger}` does not exist.")
+            return
+        triggers.pop(trigger)
+        enabled_triggers.discard(trigger)
+        await ctx.send(f"✅ Trigger `{trigger}` removed.")
+    
+    else:
+        await ctx.send("❌ Invalid action. Use `add` or `remove`.")
+
+# -----------------------------
+# Toggle command
+# -----------------------------
 @bot.command()
 async def toggle(ctx, trigger: str):
-    trigger = trigger.strip().lower()
-
-    if trigger not in {".form", ".mminfo", ".scmsg"}:
+    trigger = trigger.lower()
+    if trigger not in triggers:
         await ctx.send(f"⚠️ Unknown trigger: `{trigger}`")
         return
 
@@ -120,28 +159,34 @@ async def toggle(ctx, trigger: str):
         enabled_triggers.add(trigger)
         await ctx.send(f"✅ Enabled trigger `{trigger}`")
 
-# ------------------------------
-# ON_MESSAGE TRIGGERS
-# ------------------------------
+# -----------------------------
+# Triggers status command
+# -----------------------------
+@bot.command(name="triggers")
+async def triggers_status(ctx):
+    status_lines = []
+    for t in triggers:
+        status = "✅ Enabled" if t in enabled_triggers else "❌ Disabled"
+        status_lines.append(f"{t}: {status}")
+    await ctx.send("\n".join(status_lines))
+
+# -----------------------------
+# On message event
+# -----------------------------
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
     content = message.content.lower()
+    if content in triggers and content in enabled_triggers:
+        info = triggers[content]
+        embed = Embed(description=info["text"], color=info["color"])
+        if info.get("image"):
+            embed.set_image(url=info["image"])
+        await message.channel.send(embed=embed)
 
-    if content.startswith(".form") and ".form" in enabled_triggers:
-        await message.channel.send("📋 Form trigger is active!")
-
-    if content.startswith(".mminfo") and ".mminfo" in enabled_triggers:
-        await message.channel.send("ℹ️ Middleman info trigger is active!")
-
-    if content.startswith(".scmsg") and ".scmsg" in enabled_triggers:
-        await message.channel.send("🚨 Scam message trigger is active!")
-
-    # let commands still run
     await bot.process_commands(message)
-
 
 
 # -----------------------------
