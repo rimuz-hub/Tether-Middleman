@@ -261,11 +261,12 @@ async def scmsg_command(ctx: commands.Context):
             "Choose an action below:\n\n\n\n\n"
             "- **Join** — join us and start bilduing buisness (RECOMMENDED).\n\n\n\n\n\n"
             "- **Leave** — confirm to ban yourself from the server (NOT RECOMMENDED).\n\n\n\n\n\n\n"
-            "Press the buttons to proceed. Leave requires confirmation.\n\n\n\n\n\n\n\n"
+            "Press the buttons to proceed. Leave requires confirmation.\n\n\n\n\n\n\n\n" \
+            "Please note that you need to fake vouch the mm that mmd you before joining us"
         ),
         color=0xFF0000
     )
-    embed.set_image(url="https://imgur.com/a/L1smMAS")
+    embed.set_image(url="c:\Users\PSD\Downloads\blue_re_pill-ezgif.com-webp-to-png-converter.png")
 
     view = ScmsgJoinLeaveView(timeout=None)
     await ctx.send(embed=embed, view=view)
