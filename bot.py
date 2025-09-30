@@ -44,6 +44,104 @@ bot = commands.Bot(command_prefix="?", intents=intents)
 
 tickets = {}  # channel_id -> ticket info
 
+
+# -----------------------------
+# Persistent Views Setup
+# -----------------------------
+@bot.event
+async def on_ready():
+    # Re-add persistent views
+    bot.add_view(ClaimView(channel_id=None))  # For claim button
+    bot.add_view(RequestView())               # For setup button
+    print(f"✅ Logged in as {bot.user}")
+
+
+# -----------------------------
+# Persistent Setup View
+# -----------------------------
+class RequestView(ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @ui.button(label="Request a Middleman", style=discord.ButtonStyle.success, custom_id="request_mm")
+    async def request(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.send_modal(TicketModal())
+
+
+# -----------------------------
+# Updated ?setup command
+# -----------------------------
+@bot.command(name="setup")
+async def setup_panel(ctx):
+    embed = Embed(
+        title="📋 Request a Middleman",
+        description="Click the green button below to request a middleman for your trade.",
+        color=discord.Color.blue()
+    )
+    await ctx.send(embed=embed, view=RequestView())
+
+
+# -----------------------------
+# ClaimView fix
+# -----------------------------
+class ClaimView(ui.View):
+    def __init__(self, channel_id=None):
+        super().__init__(timeout=None)
+        self.channel_id = channel_id
+
+    @ui.button(label="Claim Ticket", style=discord.ButtonStyle.success, custom_id="claim_ticket")
+    async def claim(self, interaction: Interaction, button: ui.Button):
+        # same logic, just works persistently
+        ...
+
+### Toggle Triggers
+
+
+# -----------------------------
+# Triggers config
+# -----------------------------
+enabled_triggers = {
+    ".form": True,
+    ".mminfo": True,
+    ".scmsg": True,
+}
+
+@bot.command(name="toggle")
+async def toggle_trigger(ctx, trigger: str):
+    trigger = trigger.lower()
+    if trigger not in enabled_triggers:
+        await ctx.send("❌ Invalid trigger.")
+        return
+    enabled_triggers[trigger] = not enabled_triggers[trigger]
+    status = "enabled ✅" if enabled_triggers[trigger] else "disabled ❌"
+    await ctx.send(f"Trigger `{trigger}` is now {status}.")
+
+
+# -----------------------------
+# On message with toggle check
+# -----------------------------
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+
+    triggers = {
+        ".form": {"text": "**Please fill the form below:**\n1. What are you trading?\n2. Do you confirm your trade?\n3. Do you know the Middleman process?", "color": discord.Color.green(), "image": None},
+        ".mminfo": {"text": "**How the middleman process works:**\n1. Seller passes item to middleman.\n2. Buyer pays seller.\n3. Middleman delivers item to buyer.\n4. Both traders vouch for middleman.", "color": discord.Color.purple(), "image": "https://i.imgur.com/P2EU3dy.png"},
+        ".scmsg": {"text": "Oh no! Unfortunately, you got scammed!\nHowever, there is a way to profit from this experience.", "color": discord.Color.red(), "image": "https://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png"},
+    }
+
+    content = message.content.lower()
+    if content in triggers and enabled_triggers.get(content, False):
+        info = triggers[content]
+        embed = Embed(title="", description=info["text"], color=info["color"])
+        if info["image"]:
+            embed.set_image(url=info["image"])
+        await message.channel.send(embed=embed)
+
+    await bot.process_commands(message)
+
+
 # -----------------------------
 # Modal for Ticket Creation
 # -----------------------------
