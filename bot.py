@@ -94,8 +94,21 @@ class ClaimView(ui.View):
         # same logic, just works persistently
         ...
 
-## -----------------------------
-# Triggers dictionary
+import discord
+from discord.ext import commands
+from discord import Embed
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="?", intents=intents)
+
+# -----------------------------
+# Triggers dictionary (all triggers)
 # -----------------------------
 triggers = {
     ".form": {"text": "Fill the form!", "color": discord.Color.green(), "image": None},
@@ -106,15 +119,14 @@ triggers = {
 # -----------------------------
 # Enabled triggers set
 # -----------------------------
-enabled_triggers = set(triggers.keys())
+enabled_triggers = set(triggers.keys())  # everything enabled by default
 
 # -----------------------------
-# Add new trigger
+# Add/remove triggers dynamically
 # -----------------------------
 @bot.command()
 async def triggering(ctx, action: str, trigger: str = None, *, text: str = None):
     action = action.lower()
-
     if action == "add":
         if not trigger or not text:
             await ctx.send("❌ Usage: `?triggering add <trigger> <text>`")
@@ -126,7 +138,6 @@ async def triggering(ctx, action: str, trigger: str = None, *, text: str = None)
         triggers[trigger] = {"text": text, "color": discord.Color.blue(), "image": None}
         enabled_triggers.add(trigger)
         await ctx.send(f"✅ Trigger `{trigger}` added and enabled.")
-    
     elif action == "remove":
         if not trigger:
             await ctx.send("❌ Usage: `?triggering remove <trigger>`")
@@ -138,12 +149,11 @@ async def triggering(ctx, action: str, trigger: str = None, *, text: str = None)
         triggers.pop(trigger)
         enabled_triggers.discard(trigger)
         await ctx.send(f"✅ Trigger `{trigger}` removed.")
-    
     else:
         await ctx.send("❌ Invalid action. Use `add` or `remove`.")
 
 # -----------------------------
-# Toggle command
+# Toggle triggers
 # -----------------------------
 @bot.command()
 async def toggle(ctx, trigger: str):
@@ -160,7 +170,7 @@ async def toggle(ctx, trigger: str):
         await ctx.send(f"✅ Enabled trigger `{trigger}`")
 
 # -----------------------------
-# Triggers status command
+# Show trigger status
 # -----------------------------
 @bot.command(name="triggers")
 async def triggers_status(ctx):
@@ -171,7 +181,124 @@ async def triggers_status(ctx):
     await ctx.send("\n".join(status_lines))
 
 # -----------------------------
-# On message event
+# On message event (dynamic triggers + toggle)
+# -----------------------------
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    content = message.content.lower()
+    # Check triggers dynamically: must exist AND be enabled
+    if content in triggers and content in enabled_triggers:
+        info = triggers[content]
+        embed = Embed(description=info["text"], color=info["color"])
+        if info.get("image"):
+            embed.set_image(url=info["image"])
+        await message.channel.send(embed=embed)
+
+    await bot.process_commands(message)
+
+
+TRIGGERS_FILE = "triggers.json"
+
+# -----------------------------
+# Load triggers from JSON or create default
+# -----------------------------
+if os.path.exists(TRIGGERS_FILE):
+    with open(TRIGGERS_FILE, "r") as f:
+        data = json.load(f)
+        triggers = data.get("triggers", {})
+        enabled_triggers = set(data.get("enabled_triggers", []))
+else:
+    triggers = {
+        ".form": {"text": "Fill the form!", "color": 0x00FF00, "image": None},
+        ".mminfo": {"text": "Middleman info!", "color": 0x800080, "image": None},
+        ".scmsg": {"text": "Scam message!", "color": 0xFF0000, "image": None},
+    }
+    enabled_triggers = set(triggers.keys())
+    with open(TRIGGERS_FILE, "w") as f:
+        json.dump({"triggers": triggers, "enabled_triggers": list(enabled_triggers)}, f, indent=4)
+
+# -----------------------------
+# Helper to save triggers to JSON
+# -----------------------------
+def save_triggers():
+    with open(TRIGGERS_FILE, "w") as f:
+        json.dump({"triggers": triggers, "enabled_triggers": list(enabled_triggers)}, f, indent=4)
+
+# -----------------------------
+# Add/remove triggers dynamically (with optional image)
+# -----------------------------
+@bot.command()
+async def triggering(ctx, action: str, trigger: str = None, *, rest: str = None):
+    action = action.lower()
+    if action == "add":
+        if not trigger or not rest:
+            await ctx.send("❌ Usage: `?triggering add <trigger> <text> [image_url]`")
+            return
+        parts = rest.split()
+        # Check if last part is a URL
+        image_url = None
+        if parts[-1].startswith("http://") or parts[-1].startswith("https://"):
+            image_url = parts[-1]
+            text = " ".join(parts[:-1])
+        else:
+            text = rest
+        trigger = trigger.lower()
+        if trigger in triggers:
+            await ctx.send(f"⚠️ Trigger `{trigger}` already exists.")
+            return
+        triggers[trigger] = {"text": text, "color": 0x0000FF, "image": image_url}
+        enabled_triggers.add(trigger)
+        save_triggers()
+        await ctx.send(f"✅ Trigger `{trigger}` added and enabled.")
+    elif action == "remove":
+        if not trigger:
+            await ctx.send("❌ Usage: `?triggering remove <trigger>`")
+            return
+        trigger = trigger.lower()
+        if trigger not in triggers:
+            await ctx.send(f"⚠️ Trigger `{trigger}` does not exist.")
+            return
+        triggers.pop(trigger)
+        enabled_triggers.discard(trigger)
+        save_triggers()
+        await ctx.send(f"✅ Trigger `{trigger}` removed.")
+    else:
+        await ctx.send("❌ Invalid action. Use `add` or `remove`.")
+
+# -----------------------------
+# Toggle triggers
+# -----------------------------
+@bot.command()
+async def toggle(ctx, trigger: str):
+    trigger = trigger.lower()
+    if trigger not in triggers:
+        await ctx.send(f"⚠️ Unknown trigger: `{trigger}`")
+        return
+    if trigger in enabled_triggers:
+        enabled_triggers.remove(trigger)
+        save_triggers()
+        await ctx.send(f"❌ Disabled trigger `{trigger}`")
+    else:
+        enabled_triggers.add(trigger)
+        save_triggers()
+        await ctx.send(f"✅ Enabled trigger `{trigger}`")
+
+# -----------------------------
+# Show trigger status
+# -----------------------------
+@bot.command(name="triggers")
+async def triggers_status(ctx):
+    status_lines = []
+    for t in triggers:
+        status = "✅ Enabled" if t in enabled_triggers else "❌ Disabled"
+        status_lines.append(f"{t}: {status}")
+    await ctx.send("\n".join(status_lines))
+
+# -----------------------------
+# On message event (dynamic triggers + toggle)
 # -----------------------------
 @bot.event
 async def on_message(message):
@@ -185,9 +312,6 @@ async def on_message(message):
         if info.get("image"):
             embed.set_image(url=info["image"])
         await message.channel.send(embed=embed)
-
-    await bot.process_commands(message)
-
 
 # -----------------------------
 # Modal for Ticket Creation
