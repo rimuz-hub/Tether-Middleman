@@ -92,7 +92,7 @@ class FillFormView(ui.View):
             description="**Process:**\n1. Seller gives item to Middleman\n2. Buyer pays Seller\n3. Middleman delivers item to Buyer",
             color=discord.Color.blurple()
         )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=embed, ephemeral=True) 
 
 
 # -----------------------------
