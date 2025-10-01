@@ -191,13 +191,12 @@ class BuyerSellerView(ui.View):
         await interaction.response.send_message("Seller confirmed ✅", ephemeral=False)
 
 # -----------------------------
-# Claim Ticket View (linked to main ticket message)
+# Claim Ticket View
 # -----------------------------
 class ClaimView(ui.View):
-    def __init__(self, channel_id, ticket_message_id=None):
+    def __init__(self, channel_id):
         super().__init__(timeout=None)
         self.channel_id = channel_id
-        self.ticket_message_id = ticket_message_id  # store the main ticket message ID
 
     @ui.button(label="Claim Ticket", style=discord.ButtonStyle.success, custom_id="claim_ticket")
     async def claim(self, interaction: Interaction, button: ui.Button):
@@ -217,41 +216,22 @@ class ClaimView(ui.View):
 
         ticket["claimed"] = True
         await interaction.channel.edit(name=f"claimed-by-{interaction.user.name}")
-
-        # Update the main ticket message
-        if self.ticket_message_id:
-            try:
-                main_msg = await interaction.channel.fetch_message(self.ticket_message_id)
-                new_embed = main_msg.embeds[0].copy()
-                new_embed.color = discord.Color.green()
-                new_embed.description += f"\n\n✅ Claimed by {interaction.user.mention}"
-                await main_msg.edit(embed=new_embed, view=None)  # remove claim button
-            except Exception as e:
-                print(f"Could not update main ticket message: {e}")
-
-        await interaction.channel.send(f"✅ This ticket is now claimed by {interaction.user.mention}")
+        await interaction.channel.send(f"✅ Claimed by {interaction.user.mention}")
         await interaction.response.send_message("You claimed this ticket.", ephemeral=True)
 
         # Send form to traders
         await send_form_in_ticket(interaction.channel, ticket["creator"], ticket["other"])
 
-
 # -----------------------------
-# In ticket creation
+# Send form embed
 # -----------------------------
-channel_msg = await channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=None)
-# store ticket message ID
-tickets[channel.id] = {
-    "creator": interaction.user.id,
-    "other": other_id,
-    "giving": self.giving_input.value,
-    "receiving": self.receiving_input.value,
-    "claimed": False,
-    "ticket_message_id": channel_msg.id  # link main message
-}
-
-# attach claim view with reference to main message
-await channel_msg.edit(view=ClaimView(channel.id, ticket_message_id=channel_msg.id))
+async def send_form_in_ticket(channel, creator_id, other_id):
+    embed = Embed(
+        title="📝 Trader Form Required",
+        description="Both traders must fill the form before trade confirmation.",
+        color=discord.Color.orange()
+    )
+    await channel.send(embed=embed, view=FillFormView(channel.id))
 
 # -----------------------------
 # Command to create a ticket
