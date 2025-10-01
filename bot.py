@@ -174,18 +174,46 @@ class BuyerSellerView(ui.View):
     async def seller(self, interaction: Interaction, button: ui.Button):
         await interaction.response.send_message(f"✅ Seller confirmed: {interaction.user.mention}", ephemeral=False)
 
-# -----------------------------
-# ClaimView fix
+## -----------------------------
+# ClaimView (updated)
 # -----------------------------
 class ClaimView(ui.View):
-    def __init__(self, channel_id=None):
+    def __init__(self, channel_id):
         super().__init__(timeout=None)
         self.channel_id = channel_id
 
     @ui.button(label="Claim Ticket", style=discord.ButtonStyle.success, custom_id="claim_ticket")
     async def claim(self, interaction: Interaction, button: ui.Button):
-        # same logic, just works persistently
-        ...
+        role = interaction.guild.get_role(MIDDLEMAN_ROLE_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message("❌ Only Middleman Team can claim tickets.", ephemeral=True)
+            return
+
+        ticket = tickets.get(self.channel_id)
+        if not ticket or ticket["claimed"]:
+            await interaction.response.send_message("❌ This ticket is already claimed.", ephemeral=True)
+            return
+
+        # Claim the ticket
+        ticket["claimed"] = True
+        await interaction.channel.edit(name=f"claimed-by-{interaction.user.name}")
+        await interaction.channel.send(f"✅ This ticket will be handled by {interaction.user.mention}.")
+        await interaction.response.send_message("You have claimed this ticket.", ephemeral=True)
+
+        # Send the FillFormView to traders
+        await send_form_in_ticket(interaction.channel, ticket["creator"], ticket["other"])
+
+# -----------------------------
+# Send Form Embed in Ticket
+# -----------------------------
+async def send_form_in_ticket(channel, creator_id, other_id):
+    embed = Embed(
+        title="📝 Trader Form Required",
+        description="Both traders must fill this form before trade confirmation.\n\nClick **Fill Form** below to start.",
+        color=discord.Color.orange()
+    )
+    await channel.send(embed=embed, view=FillFormView(channel.id))
+
 
 
 TRIGGERS_FILE = "triggers.json"
