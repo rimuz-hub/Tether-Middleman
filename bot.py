@@ -347,15 +347,12 @@ class TicketModal(ui.Modal, title="Request Middleman"):
         await channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(channel.id))
         await interaction.response.send_message(f"✅ Ticket created: {channel.mention}", ephemeral=True)
 
-# -----------------------------
-# Claim button
-# -----------------------------
 class ClaimView(ui.View):
     def __init__(self, channel_id):
-        super().__init__(timeout=None)
+        super().__init__(timeout=None)  # persistent views must have timeout=None
         self.channel_id = channel_id
 
-    @ui.button(label="Claim Ticket", style=discord.ButtonStyle.success)
+    @ui.button(label="Claim Ticket", style=discord.ButtonStyle.success, custom_id="claim_ticket")
     async def claim(self, interaction: Interaction, button: ui.Button):
         role = interaction.guild.get_role(MIDDLEMAN_ROLE_ID)
         if role not in interaction.user.roles:
@@ -371,7 +368,10 @@ class ClaimView(ui.View):
         await interaction.channel.edit(name=f"claimed-by-{interaction.user.name}")
         await interaction.channel.send(f"✅ This ticket will be handled by {interaction.user.mention}.")
         await interaction.response.send_message("You have claimed this ticket.", ephemeral=True)
-        await send_form_in_ticket(channel, interaction.user.id, other_id)
+
+        # Send form to both traders
+        await send_form_in_ticket(interaction.channel, interaction.user.id, ticket["other"])
+
 
 # -----------------------------
 # ?setup command
@@ -560,18 +560,9 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# -----------------------------
-# On ready
-# -----------------------------
+
 @bot.event
 async def on_ready():
-    # Re-add persistent views
-    bot.add_view(ClaimView(channel_id=None))  # For claim button
-    bot.add_view(RequestView())               # For setup button
+    bot.add_view(ClaimView(channel_id="persistent_id"))  # Use a proper custom_id or a dummy id, cannot be None
+    bot.add_view(RequestView())  # Already persistent because buttons have custom_id
     print(f"✅ Logged in as {bot.user}")
-
-# -----------------------------
-# Run bot
-# -----------------------------
-keep_alive()  # Start the web server
-bot.run(DISCORD_TOKEN)
