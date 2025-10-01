@@ -667,7 +667,7 @@ async def on_message(message):
 async def on_ready():
     # Re-add persistent views correctly
     # Use a placeholder channel_id for persistence (won't be used)
-    bot.add_view(ClaimView(channel_id=0))  # Make sure all buttons in ClaimView have custom_id
+      # Make sure all buttons in ClaimView have custom_id
     bot.add_view(RequestView())             # All buttons in RequestView must have custom_id
     print(f"✅ Logged in as {bot.user}")
 
