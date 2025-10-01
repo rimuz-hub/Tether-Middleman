@@ -663,13 +663,43 @@ async def on_message(message):
 # -----------------------------
 # On ready
 # -----------------------------
+import json
+import os
+
+TICKETS_FILE = "tickets.json"
+
+# Save tickets to file
+def save_tickets():
+    with open(TICKETS_FILE, "w") as f:
+        json.dump({str(k): v for k, v in tickets.items()}, f, indent=4)
+
+# Load tickets from file on startup
+def load_tickets():
+    global tickets
+    if os.path.exists(TICKETS_FILE):
+        with open(TICKETS_FILE, "r") as f:
+            data = json.load(f)
+            tickets = {int(k): v for k, v in data.items()}
+    else:
+        tickets = {}
+
+# Call this before bot.run()
+load_tickets()
+
+# -----------------------------
+# On ready
+# -----------------------------
 @bot.event
 async def on_ready():
-    # Re-add persistent views correctly
-    # Use a placeholder channel_id for persistence (won't be used)
-      # Make sure all buttons in ClaimView have custom_id
-    bot.add_view(RequestView())             # All buttons in RequestView must have custom_id
     print(f"✅ Logged in as {bot.user}")
+
+    # Re-add setup view
+    bot.add_view(RequestView())
+
+    # Re-add ClaimView for all active ticket channels
+    for ch_id in tickets.keys():
+        bot.add_view(ClaimView(channel_id=ch_id))
+
 
 
 # -----------------------------
