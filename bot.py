@@ -560,9 +560,12 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-
+# -----------------------------
+# On ready
+# -----------------------------
 @bot.event
 async def on_ready():
-    bot.add_view(ClaimView(channel_id="persistent_id"))  # Use a proper custom_id or a dummy id, cannot be None
-    bot.add_view(RequestView())  # Already persistent because buttons have custom_id
+    # Re-add persistent views
+    bot.add_view(ClaimView(channel_id="persistent_id"))  # For claim button
+    bot.add_view(RequestView())               # For setup button
     print(f"✅ Logged in as {bot.user}")
