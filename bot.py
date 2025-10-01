@@ -73,8 +73,30 @@ async def setup_panel(ctx):
     )
     await ctx.send(embed=embed, view=RequestView())
 
+import discord
+from discord.ext import commands
+from discord import ui, Interaction, Embed
+import os
+from dotenv import load_dotenv
+import asyncio
+
+load_dotenv()
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+if not DISCORD_TOKEN:
+    raise ValueError("DISCORD_TOKEN not found in .env!")
+
+MIDDLEMAN_ROLE_ID = 1346013158208311377  # Middleman role ID
+
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+bot = commands.Bot(command_prefix="?", intents=intents)
+
+# Store tickets in memory
+tickets = {}  # channel_id -> ticket info
+
 # -----------------------------
-# FillFormView
+# Fill Form View
 # -----------------------------
 class FillFormView(ui.View):
     def __init__(self, channel_id):
@@ -83,10 +105,6 @@ class FillFormView(ui.View):
 
     @ui.button(label="📝 Fill Form", style=discord.ButtonStyle.primary, custom_id="fill_form")
     async def fill_form(self, interaction: Interaction, button: ui.Button):
-        # Make sure channel_id exists in tickets
-        if self.channel_id not in tickets:
-            await interaction.response.send_message("❌ Invalid ticket.", ephemeral=True)
-            return
         await interaction.response.send_modal(TradeFormModal(self.channel_id))
 
     @ui.button(label="ℹ️ MM Info", style=discord.ButtonStyle.secondary, custom_id="mm_info")
@@ -99,7 +117,7 @@ class FillFormView(ui.View):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # -----------------------------
-# TradeFormModal
+# Trader Form Modal
 # -----------------------------
 class TradeFormModal(ui.Modal, title="Trader Confirmation Form"):
     def __init__(self, channel_id):
@@ -120,24 +138,23 @@ class TradeFormModal(ui.Modal, title="Trader Confirmation Form"):
             return
 
         ticket = tickets[self.channel_id]
+        user_id = str(interaction.user.id)
+
         if "forms" not in ticket:
             ticket["forms"] = {}
 
-        ticket["forms"][str(interaction.user.id)] = {
+        ticket["forms"][user_id] = {
             "trading": self.q1.value,
             "confirm": self.q2.value,
             "process": self.q3.value
         }
 
-        save_tickets()
-        await interaction.response.send_message("✅ Your answers were submitted!", ephemeral=True)
+        await interaction.response.send_message("✅ Your form was submitted!", ephemeral=True)
 
-        # Only send summary if both traders submitted
+        # Check if both traders submitted
         if len(ticket["forms"]) >= 2:
-            creator = ticket["creator"]
-            other = ticket["other"]
-            creator_ans = ticket["forms"].get(str(creator), {})
-            other_ans = ticket["forms"].get(str(other), {})
+            creator_ans = ticket["forms"].get(str(ticket["creator"]), {})
+            other_ans = ticket["forms"].get(str(ticket["other"]), {})
 
             embed = Embed(
                 title="📋 Trade Confirmation Summary",
@@ -156,11 +173,10 @@ class TradeFormModal(ui.Modal, title="Trader Confirmation Form"):
             )
 
             channel = interaction.guild.get_channel(self.channel_id)
-            # Add Buyer/Seller buttons
             await channel.send(embed=embed, view=BuyerSellerView())
 
 # -----------------------------
-# BuyerSellerView
+# Buyer/Seller Next Step View
 # -----------------------------
 class BuyerSellerView(ui.View):
     def __init__(self):
@@ -168,14 +184,14 @@ class BuyerSellerView(ui.View):
 
     @ui.button(label="👤 Buyer", style=discord.ButtonStyle.success, custom_id="buyer_btn")
     async def buyer(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.send_message(f"✅ Buyer confirmed: {interaction.user.mention}", ephemeral=False)
+        await interaction.response.send_message("Buyer confirmed ✅", ephemeral=False)
 
     @ui.button(label="💰 Seller", style=discord.ButtonStyle.danger, custom_id="seller_btn")
     async def seller(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.send_message(f"✅ Seller confirmed: {interaction.user.mention}", ephemeral=False)
+        await interaction.response.send_message("Seller confirmed ✅", ephemeral=False)
 
-## -----------------------------
-# ClaimView (updated)
+# -----------------------------
+# Claim Ticket View
 # -----------------------------
 class ClaimView(ui.View):
     def __init__(self, channel_id):
@@ -184,35 +200,99 @@ class ClaimView(ui.View):
 
     @ui.button(label="Claim Ticket", style=discord.ButtonStyle.success, custom_id="claim_ticket")
     async def claim(self, interaction: Interaction, button: ui.Button):
+        ticket = tickets.get(self.channel_id)
+        if not ticket:
+            await interaction.response.send_message("❌ Ticket not found.", ephemeral=True)
+            return
+
         role = interaction.guild.get_role(MIDDLEMAN_ROLE_ID)
         if role not in interaction.user.roles:
             await interaction.response.send_message("❌ Only Middleman Team can claim tickets.", ephemeral=True)
             return
 
-        ticket = tickets.get(self.channel_id)
-        if not ticket or ticket["claimed"]:
-            await interaction.response.send_message("❌ This ticket is already claimed.", ephemeral=True)
+        if ticket["claimed"]:
+            await interaction.response.send_message("❌ Already claimed.", ephemeral=True)
             return
 
-        # Claim the ticket
         ticket["claimed"] = True
         await interaction.channel.edit(name=f"claimed-by-{interaction.user.name}")
-        await interaction.channel.send(f"✅ This ticket will be handled by {interaction.user.mention}.")
-        await interaction.response.send_message("You have claimed this ticket.", ephemeral=True)
+        await interaction.channel.send(f"✅ Claimed by {interaction.user.mention}")
+        await interaction.response.send_message("You claimed this ticket.", ephemeral=True)
 
-        # Send the FillFormView to traders
+        # Send form to traders
         await send_form_in_ticket(interaction.channel, ticket["creator"], ticket["other"])
 
 # -----------------------------
-# Send Form Embed in Ticket
+# Send form embed
 # -----------------------------
 async def send_form_in_ticket(channel, creator_id, other_id):
     embed = Embed(
         title="📝 Trader Form Required",
-        description="Both traders must fill this form before trade confirmation.\n\nClick **Fill Form** below to start.",
+        description="Both traders must fill the form before trade confirmation.",
         color=discord.Color.orange()
     )
     await channel.send(embed=embed, view=FillFormView(channel.id))
+
+# -----------------------------
+# Command to create a ticket
+# -----------------------------
+class TicketModal(ui.Modal, title="Request Middleman"):
+    def __init__(self):
+        super().__init__()
+        self.trader_id_input = ui.TextInput(label="Other Trader Discord ID", placeholder="Enter Discord ID", required=True)
+        self.giving_input = ui.TextInput(label="What are you giving?", required=True)
+        self.receiving_input = ui.TextInput(label="What are you receiving?", required=True)
+        self.add_item(self.trader_id_input)
+        self.add_item(self.giving_input)
+        self.add_item(self.receiving_input)
+
+    async def on_submit(self, interaction: Interaction):
+        try:
+            other_id = int(self.trader_id_input.value.strip())
+            other_member = interaction.guild.get_member(other_id)
+            if not other_member:
+                other_member = await interaction.guild.fetch_member(other_id)
+        except:
+            await interaction.response.send_message("❌ Invalid Discord ID.", ephemeral=True)
+            return
+
+        category = discord.utils.get(interaction.guild.categories, name="Tickets")
+        if not category:
+            category = await interaction.guild.create_category("Tickets")
+
+        channel = await interaction.guild.create_text_channel(
+            f"ticket-{interaction.user.name}",
+            category=category,
+            overwrites={
+                interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+                other_member: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+                interaction.guild.get_role(MIDDLEMAN_ROLE_ID): discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            },
+        )
+
+        tickets[channel.id] = {
+            "creator": interaction.user.id,
+            "other": other_id,
+            "giving": self.giving_input.value,
+            "receiving": self.receiving_input.value,
+            "claimed": False
+        }
+
+        embed = Embed(
+            title="🎮 New Middleman Request",
+            description=(f"**Creator:** {interaction.user.mention}\n"
+                         f"**Other Trader:** <@{other_id}>\n\n"
+                         f"**Giving:** {self.giving_input.value}\n"
+                         f"**Receiving:** {self.receiving_input.value}\n\n"
+                         f"⏳ A middleman will claim this ticket soon."),
+            color=discord.Color.green()
+        )
+
+        await channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(channel.id))
+        await interaction.response.send_message(f"✅ Ticket created: {channel.mention}", ephemeral=True)
+
+
 
 
 
@@ -674,7 +754,7 @@ async def on_message(message):
     triggers = {
         ".form": {"text": "**Please fill the form below:**\n1. What are you trading?\n2. Do you confirm your trade?\n3. Do you know the Middleman process?", "color": discord.Color.green(), "image": None},
         ".mminfo": {"text": "**How the middleman process works:**\n1. Seller passes item to middleman.\n2. Buyer pays seller.\n3. Middleman delivers item to buyer.\n4. Both traders vouch for middleman.", "color": discord.Color.purple(), "image": "https://i.imgur.com/P2EU3dy.png"},
-        ".scmsg": {"text": "Oh no! Unfortunately, you got scammed!\nHowever, there is a way to profit from this experience.", "color": discord.Color.red(), "image": "https://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png"},
+        ".scmsg": {"text": "Oh no!= Unfortunately, you got scammed!\nHowever, there is a way to profit from this experience.", "color": discord.Color.red(), "image": "https://cdn.discordapp.com/attachments/1345858190021103657/1375512933177491618/Picsart_25-05-23_22-20-50-784.png"},
     }
 
     content = message.content.lower()
@@ -716,24 +796,16 @@ def load_tickets():
 # Call this before bot.run()
 load_tickets()
 
+
 # -----------------------------
 # On ready
 # -----------------------------
 @bot.event
 async def on_ready():
-    print(f"✅ Logged in as {bot.user}")
-
-    # Re-add setup view
+    # Re-add persistent views for buttons that may exist after restart
     bot.add_view(RequestView())
-
-    # Re-add ClaimView for all active ticket channels
-    for ch_id in tickets.keys():
-        bot.add_view(ClaimView(channel_id=ch_id))
-
-
-
-# -----------------------------
-# Run bot
-# -----------------------------
-keep_alive()  # Start the web server
+    for ticket_id in tickets.keys():
+        bot.add_view(ClaimView(ticket_id))
+    print(f"✅ Logged in as {bot.user}")
+keep_alive()
 bot.run(DISCORD_TOKEN)
