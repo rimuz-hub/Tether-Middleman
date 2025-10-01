@@ -1,0 +1,24 @@
+{
+    "triggers": {
+        ".form": {
+            "text": "Fill the form!",
+            "color": 65280,
+            "image": null
+        },
+        ".mminfo": {
+            "text": "Middleman info!",
+            "color": 8388736,
+            "image": null
+        },
+        ".scmsg": {
+            "text": "Scam message!",
+            "color": 16711680,
+            "image": null
+        }
+    },
+    "enabled_triggers": [
+        ".mminfo",
+        ".scmsg",
+        ".form"
+    ]
+}
