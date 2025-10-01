@@ -74,7 +74,7 @@ async def setup_panel(ctx):
     await ctx.send(embed=embed, view=RequestView())
 
 # -----------------------------
-# Form View
+# FillFormView
 # -----------------------------
 class FillFormView(ui.View):
     def __init__(self, channel_id):
@@ -83,6 +83,10 @@ class FillFormView(ui.View):
 
     @ui.button(label="📝 Fill Form", style=discord.ButtonStyle.primary, custom_id="fill_form")
     async def fill_form(self, interaction: Interaction, button: ui.Button):
+        # Make sure channel_id exists in tickets
+        if self.channel_id not in tickets:
+            await interaction.response.send_message("❌ Invalid ticket.", ephemeral=True)
+            return
         await interaction.response.send_modal(TradeFormModal(self.channel_id))
 
     @ui.button(label="ℹ️ MM Info", style=discord.ButtonStyle.secondary, custom_id="mm_info")
@@ -92,11 +96,10 @@ class FillFormView(ui.View):
             description="**Process:**\n1. Seller gives item to Middleman\n2. Buyer pays Seller\n3. Middleman delivers item to Buyer",
             color=discord.Color.blurple()
         )
-        await interaction.response.send_message(embed=embed, ephemeral=True) 
-
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # -----------------------------
-# Modal for Trader Form
+# TradeFormModal
 # -----------------------------
 class TradeFormModal(ui.Modal, title="Trader Confirmation Form"):
     def __init__(self, channel_id):
@@ -112,7 +115,6 @@ class TradeFormModal(ui.Modal, title="Trader Confirmation Form"):
         self.add_item(self.q3)
 
     async def on_submit(self, interaction: Interaction):
-        user_id = interaction.user.id
         if self.channel_id not in tickets:
             await interaction.response.send_message("❌ This ticket is invalid.", ephemeral=True)
             return
@@ -121,19 +123,19 @@ class TradeFormModal(ui.Modal, title="Trader Confirmation Form"):
         if "forms" not in ticket:
             ticket["forms"] = {}
 
-        ticket["forms"][str(user_id)] = {
+        ticket["forms"][str(interaction.user.id)] = {
             "trading": self.q1.value,
             "confirm": self.q2.value,
             "process": self.q3.value
         }
 
+        save_tickets()
         await interaction.response.send_message("✅ Your answers were submitted!", ephemeral=True)
 
-        # If both traders filled form
+        # Only send summary if both traders submitted
         if len(ticket["forms"]) >= 2:
             creator = ticket["creator"]
             other = ticket["other"]
-
             creator_ans = ticket["forms"].get(str(creator), {})
             other_ans = ticket["forms"].get(str(other), {})
 
@@ -154,11 +156,11 @@ class TradeFormModal(ui.Modal, title="Trader Confirmation Form"):
             )
 
             channel = interaction.guild.get_channel(self.channel_id)
+            # Add Buyer/Seller buttons
             await channel.send(embed=embed, view=BuyerSellerView())
 
-
 # -----------------------------
-# Buyer/Seller Next Step View
+# BuyerSellerView
 # -----------------------------
 class BuyerSellerView(ui.View):
     def __init__(self):
@@ -166,11 +168,11 @@ class BuyerSellerView(ui.View):
 
     @ui.button(label="👤 Buyer", style=discord.ButtonStyle.success, custom_id="buyer_btn")
     async def buyer(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.send_message("Buyer confirmed ✅", ephemeral=False)
+        await interaction.response.send_message(f"✅ Buyer confirmed: {interaction.user.mention}", ephemeral=False)
 
     @ui.button(label="💰 Seller", style=discord.ButtonStyle.danger, custom_id="seller_btn")
     async def seller(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.send_message("Seller confirmed ✅", ephemeral=False)
+        await interaction.response.send_message(f"✅ Seller confirmed: {interaction.user.mention}", ephemeral=False)
 
 # -----------------------------
 # ClaimView fix
