@@ -559,12 +559,15 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# -----------------------------
 # On ready
 # -----------------------------
 @bot.event
 async def on_ready():
-    # Re-add persistent views
-    bot.add_view(ClaimView(channel_id="persistent_id"))  # For claim button
-    bot.add_view(RequestView())               # For setup button
+    # Re-add persistent views that don't depend on existing tickets
+    bot.add_view(RequestView())  # Safe: setup panel button
+
+    # ClaimView should only be added dynamically when a ticket is created
+    # So do NOT add a placeholder with a fake channel_id
+    # bot.add_view(ClaimView(channel_id="persistent_id"))  # ❌ Remove this
+
     print(f"✅ Logged in as {bot.user}")
