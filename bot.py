@@ -108,15 +108,52 @@ class BuyerSellerView(ui.View):
     async def seller(self, interaction: Interaction, button: ui.Button):
         await interaction.response.send_message("Seller confirmed ✅", ephemeral=False)
 
+import discord
+from discord import ui, Interaction, Embed
+import json
+import os
+
+# -----------------------------
+# Tickets storage
+# -----------------------------
+tickets = {}  # channel_id -> ticket info
+MIDDLEMAN_ROLE_ID = 1346013158208311377  # Replace with your Middleman role ID
+
+# -----------------------------
+# Panel message persistence
+# -----------------------------
+PANEL_FILE = "panel.json"
+
+def save_panel(message_id):
+    with open(PANEL_FILE, "w") as f:
+        json.dump({"message_id": message_id}, f)
+
+def load_panel():
+    if os.path.exists(PANEL_FILE):
+        with open(PANEL_FILE, "r") as f:
+            data = json.load(f)
+            return data.get("message_id")
+    return None
+
 # -----------------------------
 # Ticket Modal
 # -----------------------------
 class TicketModal(ui.Modal, title="Request Middleman"):
     def __init__(self):
         super().__init__()
-        self.trader_id_input = ui.TextInput(label="Other Trader Discord ID", placeholder="Enter Discord ID", required=True)
-        self.giving_input = ui.TextInput(label="What are you giving?", required=True)
-        self.receiving_input = ui.TextInput(label="What are you receiving?", required=True)
+        self.trader_id_input = ui.TextInput(
+            label="Other Trader Discord ID",
+            placeholder="Enter Discord ID",
+            required=True
+        )
+        self.giving_input = ui.TextInput(
+            label="What are you giving?",
+            required=True
+        )
+        self.receiving_input = ui.TextInput(
+            label="What are you receiving?",
+            required=True
+        )
         self.add_item(self.trader_id_input)
         self.add_item(self.giving_input)
         self.add_item(self.receiving_input)
@@ -156,16 +193,68 @@ class TicketModal(ui.Modal, title="Request Middleman"):
 
         embed = Embed(
             title="🎮 New Middleman Request",
-            description=(f"**Creator:** {interaction.user.mention}\n"
-                         f"**Other Trader:** <@{other_id}>\n\n"
-                         f"**Giving:** {self.giving_input.value}\n"
-                         f"**Receiving:** {self.receiving_input.value}\n\n"
-                         f"⏳ A middleman will claim this ticket soon."),
+            description=(
+                f"**Creator:** {interaction.user.mention}\n"
+                f"**Other Trader:** <@{other_id}>\n\n"
+                f"**Giving:** {self.giving_input.value}\n"
+                f"**Receiving:** {self.receiving_input.value}\n\n"
+                f"⏳ A middleman will claim this ticket soon."
+            ),
             color=discord.Color.green()
         )
 
         await channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(channel.id))
         await interaction.response.send_message(f"✅ Ticket created: {channel.mention}", ephemeral=True)
+
+# -----------------------------
+# Request Panel View
+# -----------------------------
+class RequestView(ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)  # Persistent view
+
+    @ui.button(label="Request a Middleman", style=discord.ButtonStyle.success, custom_id="request_mm")
+    async def request(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.send_modal(TicketModal())
+
+# -----------------------------
+# Claim Ticket View (for tickets)
+# -----------------------------
+class ClaimView(ui.View):
+    def __init__(self, channel_id):
+        super().__init__(timeout=None)
+        self.channel_id = channel_id
+
+    @ui.button(label="Claim Ticket", style=discord.ButtonStyle.success)
+    async def claim(self, interaction: Interaction, button: ui.Button):
+        role = interaction.guild.get_role(MIDDLEMAN_ROLE_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message("❌ Only Middleman Team can claim tickets.", ephemeral=True)
+            return
+
+        ticket = tickets.get(self.channel_id)
+        if not ticket or ticket["claimed"]:
+            await interaction.response.send_message("❌ This ticket is already claimed.", ephemeral=True)
+            return
+
+        ticket["claimed"] = True
+        await interaction.channel.edit(name=f"claimed-by-{interaction.user.name}")
+        await interaction.channel.send(f"✅ This ticket will be handled by {interaction.user.mention}.")
+        await interaction.response.send_message("You have claimed this ticket.", ephemeral=True)
+
+# -----------------------------
+# Sending panel command
+# -----------------------------
+async def send_panel(channel):
+    embed = Embed(
+        title="🎫 Middleman Panel",
+        description="Click the button below to request a Middleman for your trade.",
+        color=discord.Color.blurple()
+    )
+    view = RequestView()
+    msg = await channel.send(embed=embed, view=view)
+    save_panel(msg.id)
+
 
 # -----------------------------
 # Trade Form Modal
