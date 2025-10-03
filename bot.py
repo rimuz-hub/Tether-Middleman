@@ -358,37 +358,36 @@ async def handle_ticket(ctx):
     await ctx.channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(ctx.channel.id))
     await ctx.send("✅ Ticket is now reclaimable by another middleman.")
 
-# -----------------------------
-# Triggers system
-# -----------------------------
-TRIGGERS_FILE = "triggers.json"
+triggers = {
+    ".form": {
+        "text": (
+            "Fill the form!\n"
+            "1. What are you trading?\n"
+            "2. Do you confirm your trade?\n"
+            "3. Do you know the Middleman process?"
+        ),
+        "color": 0x00FF00,
+        "image": "https://i.imgur.com/P2EU3dy.png"  # <-- put any image URL here
+    },
+    ".mminfo": {
+        "text": (
+            "Middleman info!\n"
+            "How the middleman process works:\n"
+            "1. The seller passes the item to the middleman.\n"
+            "2. Then the buyer pays the seller.\n"
+            "3. The middleman delivers the item to the buyer.\n"
+            "4. Both traders have to vouch for the middleman."
+        ),
+        "color": 0x800080,
+        "image": "https://images-ext-1.discordapp.net/external/H7b2m7W2DzqQMZZACS4oO-umPrUa7yOhQz9M1xvJPPs/https/i.imgur.com/P2EU3dy.png"  # another image
+    },
+    ".scmsg": {
+        "text": "Scam message!",
+        "color": 0xFF0000,
+        
+    },
+}
 
-if os.path.exists(TRIGGERS_FILE):
-    with open(TRIGGERS_FILE, "r") as f:
-        data = json.load(f)
-        triggers = data.get("triggers", {})
-        enabled_triggers = set(data.get("enabled_triggers", []))
-else:
-    triggers = {
-        ".form": {"text": "Fill the form!"
-                  "What are you trading?
-                "Do you confirm your trade?
-                "Do you know the Middleman process?", "color": 0x00FF00, "image": None},
-
-        ".mminfo": {"text": "Middleman info!"
-                    "How the middle man process works :-
-
-"The seller passes the item to the middle man.
-
-"Then the buyer pays the seller.
-
-"Then the middle man passes the item to the buyer given by the seller.
-
-"In return, both traders have to vouch for the middle man.
-", "color": 0x800080, "image": None},
-
-        ".scmsg": {"text": "Scam message!", "color": 0xFF0000, "image": None},
-    }
     enabled_triggers = set(triggers.keys())
     with open(TRIGGERS_FILE, "w") as f:
         json.dump({"triggers": triggers, "enabled_triggers": list(enabled_triggers)}, f, indent=4)
@@ -527,6 +526,7 @@ Choose an action below:
 Press the buttons to proceed. Leave requires confirmation.
 Please note that you need to fake vouch the mm that mmd you before joining us""",
         color=0xFF0000
+        "image": "https://cdn.discordapp.com/attachments/1400475520310837381/1420374603808903178/blue_re_pill.png?ex=68e107ee&is=68dfb66e&hm=7412fea29a0638737c1a8b61870538787b7be15bf761dc30c02e0fe4bf131f67"  # <-- put any im
     )
     view = ScmsgJoinLeaveView(timeout=None)
     await ctx.send(embed=embed, view=view)
