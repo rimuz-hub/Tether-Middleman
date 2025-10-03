@@ -61,39 +61,7 @@ class RequestView(ui.View):
         await interaction.response.send_modal(TicketModal())
 
 
-# -----------------------------
-# Updated ?setup command
-# -----------------------------
-@bot.command(name="panel")
-async def setup_panel(ctx):
-    embed = Embed(
-        title="📋 Request a Middleman",
-        description="Click the green button below to request a middleman for your trade.",
-        color=discord.Color.blue()
-    )
-    await ctx.send(embed=embed, view=RequestView())
 
-import discord
-from discord.ext import commands
-from discord import ui, Interaction, Embed
-import os
-from dotenv import load_dotenv
-import asyncio
-
-load_dotenv()
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-if not DISCORD_TOKEN:
-    raise ValueError("DISCORD_TOKEN not found in .env!")
-
-MIDDLEMAN_ROLE_ID = 1346013158208311377  # Middleman role ID
-
-intents = discord.Intents.default()
-intents.members = True
-intents.message_content = True
-bot = commands.Bot(command_prefix="?", intents=intents)
-
-# Store tickets in memory
-tickets = {}  # channel_id -> ticket info
 
 # -----------------------------
 # Fill Form View
@@ -797,15 +765,9 @@ def load_tickets():
 load_tickets()
 
 
-# -----------------------------
-# On ready
-# -----------------------------
 @bot.event
 async def on_ready():
-    # Re-add persistent views for buttons that may exist after restart
-    bot.add_view(RequestView())
+    bot.add_view(SetupView())  # re-register persistent setup panel
     for ticket_id in tickets.keys():
-        bot.add_view(ClaimView(ticket_id))
+        bot.add_view(ClaimView(ticket_id))  # restore claim views
     print(f"✅ Logged in as {bot.user}")
-keep_alive()
-bot.run(DISCORD_TOKEN)
