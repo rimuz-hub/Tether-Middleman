@@ -322,6 +322,12 @@ async def send_form_in_ticket(channel, creator_id, other_id):
     )
     await channel.send(embed=embed, view=FillFormView(channel.id))
 
+@bot.command(name="panel")
+@commands.has_permissions(administrator=True)  # Optional: only admins can send it
+async def panel_command(ctx):
+    await send_panel(ctx.channel)
+    await ctx.send("✅ Panel sent!", delete_after=5)
+
 # -----------------------------
 # Commands: ?delete and ?handle
 # -----------------------------
