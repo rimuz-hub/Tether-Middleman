@@ -370,8 +370,23 @@ if os.path.exists(TRIGGERS_FILE):
         enabled_triggers = set(data.get("enabled_triggers", []))
 else:
     triggers = {
-        ".form": {"text": "Fill the form!", "color": 0x00FF00, "image": None},
-        ".mminfo": {"text": "Middleman info!", "color": 0x800080, "image": None},
+        ".form": {"text": "Fill the form!"
+                  "What are you trading?
+                "Do you confirm your trade?
+                "Do you know the Middleman process?", "color": 0x00FF00, "image": None},
+
+        ".mminfo": {"text": "Middleman info!"
+                    "How the middle man process works :-
+
+"The seller passes the item to the middle man.
+
+"Then the buyer pays the seller.
+
+"Then the middle man passes the item to the buyer given by the seller.
+
+"In return, both traders have to vouch for the middle man.
+", "color": 0x800080, "image": None},
+
         ".scmsg": {"text": "Scam message!", "color": 0xFF0000, "image": None},
     }
     enabled_triggers = set(triggers.keys())
