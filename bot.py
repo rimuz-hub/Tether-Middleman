@@ -401,38 +401,26 @@ else:
         },
     }
 
-# -----------------------------
-# Triggers handler (on_message)
-# -----------------------------
-@bot.event
-async def on_message(message: discord.Message):
+#@bot.event
+async def on_message(message):
     if message.author.bot:
         return
 
-    # Check if message content is in triggers
+    # Check if the message matches a trigger
     trigger = triggers.get(message.content)
     if trigger:
-        embed = Embed(
-            description=trigger["text"],
+        embed = discord.Embed(
+            title=trigger.get("title", ""),
+            description=trigger.get("text", ""),
             color=trigger["color"]
         )
         if trigger.get("image"):
             embed.set_image(url=trigger["image"])
         await message.channel.send(embed=embed)
 
-    # Make sure normal commands still work
+    # Allow commands like ?scmsg, ?handle, etc. to still work
     await bot.process_commands(message)
-    trigger = triggers.get(message.content)
-    
-if trigger:
-    embed = Embed(
-        title=trigger.get("title", ""),
-        description=trigger.get("text", ""),
-        color=trigger["color"]
-    )
-    if trigger.get("image"):
-        embed.set_image(url=trigger["image"])
-    await message.channel.send(embed=embed)
+
 
 
 
