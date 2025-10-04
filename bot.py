@@ -429,14 +429,15 @@ async def on_message(message):
     # Ensure commands still work
     await bot.process_commands(message)
 
-# -----------------------------
-# Example simple command
-# -----------------------------
 @bot.command()
-async def meow(ctx):
-    await ctx.send("meow\n" \
-    "              moew\n" \
-    "              meow")
+async def ping(ctx):
+    embed = discord.Embed(
+        title="🏓 Pong!",
+        description=f"Latency: {round(bot.latency * 1000)}ms",
+        color=discord.Color.green()
+    )
+    await ctx.send(embed=embed)
+
 
 
 # -----------------------------
