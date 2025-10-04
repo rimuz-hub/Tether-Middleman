@@ -368,8 +368,8 @@ if os.path.exists(TRIGGERS_FILE):
 else:
     triggers = {
         ".form": {
+            "title": "📋 Fill the Form!",
             "text": (
-                "**📋 Fill the form!**\n\n"
                 "🔹 What are you trading?\n"
                 "🔹 Do you confirm your trade?\n"
                 "🔹 Do you know the Middleman process?"
@@ -379,8 +379,8 @@ else:
         },
 
         ".mminfo": {
+            "title": "ℹ️ Middleman Info!",
             "text": (
-                "**ℹ️ Middleman Info!**\n\n"
                 "✅ How the middleman process works:\n"
                 "1. The seller passes the item to the middleman.\n"
                 "2. The buyer pays the seller.\n"
@@ -392,31 +392,37 @@ else:
         },
 
         ".scmsg": {
+            "title": "🚨 Scam Warning!",
             "text": (
-                "🚨 **Scam Warning!**\n\n"
-                "If someone asks you to trade without a middleman, it’s a scam."
+                "If someone asks you to trade **without a middleman**, it’s a scam."
             ),
             "color": 0xFF0000,
             "image": "https://i.imgur.com/yourimage3.png"
         },
     }
 
-#@bot.event
+
+@bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    # Check if the message matches a trigger
+    # Check if message matches a trigger
     trigger = triggers.get(message.content)
     if trigger:
         embed = discord.Embed(
             title=trigger.get("title", ""),
             description=trigger.get("text", ""),
-            color=trigger["color"]
+            color=trigger.get("color", 0x2f3136)
         )
         if trigger.get("image"):
             embed.set_image(url=trigger["image"])
+
         await message.channel.send(embed=embed)
+
+    # Keep commands like ?scmsg, ?handle working
+    await bot.process_commands(message)
+
 
     # Allow commands like ?scmsg, ?handle, etc. to still work
     await bot.process_commands(message)
@@ -459,7 +465,7 @@ class ScmsgJoinLeaveView(ui.View):
 
     @ui.button(label="Join", style=discord.ButtonStyle.success, custom_id="scmsg_join")
     async def join(self, interaction: discord.Interaction, button: ui.Button):
-        await interaction.response.send_message(f"👋 Hi {interaction.user.mention}, great choice, https://discord.gg/TesnPTbtc8!", ephemeral=True)
+        await interaction.response.send_message(f"👋 Hi {interaction.user.mention}, great choice, https://discord.gg/Zz2DWM7RvP", ephemeral=True)
 
     @ui.button(label="Leave", style=discord.ButtonStyle.danger, custom_id="scmsg_leave")
     async def leave(self, interaction: discord.Interaction, button: ui.Button):
