@@ -358,75 +358,83 @@ async def handle_ticket(ctx):
     await ctx.channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(ctx.channel.id))
     await ctx.send("✅ Ticket is now reclaimable by another middleman.")
 
+# -----------------------------
+# Triggers system
+# -----------------------------
 TRIGGERS_FILE = "triggers.json"
 
+# Default triggers
+default_triggers = {
+    ".form": {
+        "title": "📋 Fill the Form",
+        "text": (
+            "🔹 What are you trading?\n"
+            "🔹 Do you confirm your trade?\n"
+            "🔹 Do you know the Middleman process?"
+        ),
+        "color": 0x00FF00,
+        "image": "https://i.imgur.com/yourimage1.png"
+    },
+    ".mminfo": {
+        "title": "ℹ️ Middleman Info",
+        "text": (
+            "✅ How the middleman process works:\n"
+            "1. Seller passes the item to the middleman.\n"
+            "2. Buyer pays the seller.\n"
+            "3. Middleman gives the item to the buyer.\n\n"
+            "📌 Both traders must vouch for the middleman."
+        ),
+        "color": 0x800080,
+        "image": "https://i.imgur.com/yourimage2.png"
+    },
+    ".scmsg": {
+        "title": "🚨 Scam Warning",
+        "text": "If someone asks you to trade without a middleman, it’s a scam.",
+        "color": 0xFF0000,
+        "image": "https://i.imgur.com/yourimage3.png"
+    },
+}
+
+# Load triggers from file if exists
 if os.path.exists(TRIGGERS_FILE):
     with open(TRIGGERS_FILE, "r") as f:
         data = json.load(f)
-        triggers = data.get("triggers", {})
+        triggers = data.get("triggers", default_triggers)
         enabled_triggers = set(data.get("enabled_triggers", []))
 else:
-    triggers = {
-        ".form": {
-            "title": "📋 Fill the Form!",
-            "text": (
-                "🔹 What are you trading?\n"
-                "🔹 Do you confirm your trade?\n"
-                "🔹 Do you know the Middleman process?"
-            ),
-            "color": 0x00FF00,
-            "image": "https://i.imgur.com/yourimage1.png"
-        },
+    triggers = default_triggers
+    enabled_triggers = set(triggers.keys())
 
-        ".mminfo": {
-            "title": "ℹ️ Middleman Info!",
-            "text": (
-                "✅ **How the middleman process works:**\n\n"
-                "1️⃣ The seller passes the item to the middleman.\n"
-                "2️⃣ The buyer pays the seller.\n"
-                "3️⃣ The middleman gives the item to the buyer.\n\n"
-                "📌 In return, both traders have to **vouch** for the middleman."
-            ),
-            "color": 0x800080,
-            "image": "https://i.imgur.com/yourimage2.png"
-        },
-
-        ".scmsg": {
-            "title": "🚨 Scam Warning!",
-            "text": (
-                "❌ If someone asks you to trade **without a middleman**, it’s a scam.\n\n"
-                "⚠️ Always use an official verified middleman."
-            ),
-            "color": 0xFF0000,
-            "image": "https://i.imgur.com/yourimage3.png"
-        },
-    }
-
-
+# -----------------------------
+# Trigger messages handler
+# -----------------------------
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    # Check if message matches a trigger
-    trigger = triggers.get(message.content.strip())
-    if trigger:
-        embed = discord.Embed(
+    # Check if the message matches a trigger
+    content = message.content.strip()
+    if content in triggers:
+        trigger = triggers[content]
+        embed = Embed(
             title=trigger.get("title", ""),
-            description=trigger.get("text", "⚠️ No content found."),
-            color=trigger.get("color", 0x2f3136)
+            description=trigger.get("text", ""),
+            color=trigger.get("color", 0x000000)
         )
-
         if trigger.get("image"):
             embed.set_image(url=trigger["image"])
-
         await message.channel.send(embed=embed)
 
-    # Keep normal commands working
+    # Ensure commands still work
     await bot.process_commands(message)
 
-
-
+# -----------------------------
+# Example simple command
+# -----------------------------
+@bot.command()
+async def ping(ctx):
+    await ctx.send("🏓 Pong!")
 
 
 # -----------------------------
