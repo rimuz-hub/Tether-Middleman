@@ -358,52 +358,6 @@ async def handle_ticket(ctx):
     await ctx.channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(ctx.channel.id))
     await ctx.send("✅ Ticket is now reclaimable by another middleman.")
 
-# -----------------------------
-# Triggers system
-# -----------------------------
-TRIGGERS_FILE = "triggers.json"
-
-# Default triggers
-default_triggers = {
-    ".form": {
-        "title": "📋 Fill the Form",
-        "text": (
-            "🔹 What are you trading?\n"
-            "🔹 Do you confirm your trade?\n"
-            "🔹 Do you know the Middleman process?"
-        ),
-        "color": 0x00FF00,
-        "image": "https://i.imgur.com/yourimage1.png"
-    },
-    ".mminfo": {
-        "title": "ℹ️ Middleman Info",
-        "text": (
-            "✅ How the middleman process works:\n"
-            "1. Seller passes the item to the middleman.\n"
-            "2. Buyer pays the seller.\n"
-            "3. Middleman gives the item to the buyer.\n\n"
-            "📌 Both traders must vouch for the middleman."
-        ),
-        "color": 0x800080,
-        "image": "https://i.imgur.com/yourimage2.png"
-    },
-    ".scmsg": {
-        "title": "🚨 Scam Warning",
-        "text": "If someone asks you to trade without a middleman, it’s a scam.",
-        "color": 0xFF0000,
-        "image": "https://i.imgur.com/yourimage3.png"
-    },
-}
-
-# Load triggers from file if exists
-if os.path.exists(TRIGGERS_FILE):
-    with open(TRIGGERS_FILE, "r") as f:
-        data = json.load(f)
-        triggers = data.get("triggers", default_triggers)
-        enabled_triggers = set(data.get("enabled_triggers", []))
-else:
-    triggers = default_triggers
-    enabled_triggers = set(triggers.keys())
 
 # -----------------------------
 # Trigger messages handler
@@ -466,7 +420,7 @@ Answer all the questions above""",
         color=discord.Color.dark_purple()
     )
     # Add your image here
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1400475520310837381/1420374603808903178/blue_re_pill.png?ex=68e1b0ae&is=68e05f2e&hm=5f5eaae9a537a5536716305ecf8d4f338f22e013a987da16fc3e7e6ef4c81004")
+    
     
     await ctx.send(embed=embed)
 
@@ -541,6 +495,46 @@ Please note that you need to fake vouch the mm that mmd you before joining us"""
     view = ScmsgJoinLeaveView(timeout=None)
     await ctx.send(embed=embed, view=view)
 
+@bot.command()
+async def mminfo(ctx):
+    embed = discord.Embed(
+        title="Middleman Info",
+        description=f"""How the middle man process works : 
+
+The seller passes the item to the middle man. 
+
+Then the buyer pays the seller. 
+
+Then the middle man passes the item to the buyer given by the seller.
+
+In return, both traders have to vouch for the middle man.""",
+        color=discord.Color.green()
+    )
+    # Add your image here
+    embed.set_image(url="https://images-ext-1.discordapp.net/external/H7b2m7W2DzqQMZZACS4oO-umPrUa7yOhQz9M1xvJPPs/https/i.imgur.com/P2EU3dy.png")
+    
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def form(ctx):
+    embed = discord.Embed(
+        title="Please Fill This Form",
+        description=f"""Both the users please fill the below form.
+1-What are you trading?
+
+2-Do you confirm your trade?
+
+3-Do you know the Middleman process? 
+
+4-Can you join private server link? 
+
+Answer all the questions above""",
+        color=discord.Color.dark_purple()
+    )
+    # Add your image here
+    
+    
+    await ctx.send(embed=embed)
 
 # -----------------------------
 # Persistent tickets saving/loading
