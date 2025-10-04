@@ -432,11 +432,19 @@ async def on_message(message):
 @bot.command()
 async def ping(ctx):
     embed = discord.Embed(
-        title="🏓 Pong!",
-        description=f"Latency: {round(bot.latency * 1000)}ms",
+        title="Middleman Info",
+        description=f"How the middle man process works :-
+The seller passes the item to the middle man.
+Then the buyer pays the seller.
+Then the middle man passes the item to the buyer given by the seller.
+In return, both traders have to vouch for the middle man.",
         color=discord.Color.green()
     )
+    # Add your image here
+    embed.set_image(url="https://images-ext-1.discordapp.net/external/H7b2m7W2DzqQMZZACS4oO-umPrUa7yOhQz9M1xvJPPs/https/i.imgur.com/P2EU3dy.png")
+    
     await ctx.send(embed=embed)
+
 
 
 
