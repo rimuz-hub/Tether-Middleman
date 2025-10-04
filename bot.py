@@ -453,10 +453,12 @@ Choose an action below:
 Press the buttons to proceed. Leave requires confirmation.
 Please note that you need to fake vouch the mm that mmd you before joining us""",
         color=0xFF0000
-        "image": "https://cdn.discordapp.com/attachments/1400475520310837381/1420374603808903178/blue_re_pill.png?ex=68e107ee&is=68dfb66e&hm=7412fea29a0638737c1a8b61870538787b7be15bf761dc30c02e0fe4bf131f67"  # <-- put any im
     )
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1400475520310837381/1420374603808903178/blue_re_pill.png")
+
     view = ScmsgJoinLeaveView(timeout=None)
     await ctx.send(embed=embed, view=view)
+
 
 # -----------------------------
 # Persistent tickets saving/loading
