@@ -466,7 +466,7 @@ Answer all the questions above""",
         color=discord.Color.dark_purple()
     )
     # Add your image here
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1400475520310837381/1420374603808903178/blue_re_pill.png?ex=68e1b0ae&is=68e05f2e&hm=5f5eaae9a537a5536716305ecf8d4f338f22e013a987da16fc3e7e6ef4c81004")
+    
     
     await ctx.send(embed=embed)
 
@@ -634,6 +634,18 @@ async def on_message(message):
 
     # Ensure normal command processing
     await bot.process_commands(message)
+
+# Delete the invoking message after any command runs
+@bot.event
+async def on_command_completion(ctx):
+    try:
+        await ctx.message.delete()
+    except discord.Forbidden:
+        # Bot doesn't have permission to delete messages
+        pass
+    except discord.HTTPException:
+        # Could not delete message
+        pass
 
 # -----------------------------
 # Persistent tickets saving/loading
