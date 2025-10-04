@@ -380,7 +380,12 @@ else:
 
         ".mminfo": {
             "title": "ℹ️ Middleman Info!",
-            "text": ("✅ How the middleman process works:\n""1. The seller passes the item to the middleman.\n""2. The buyer pays the seller.\n""3. The middleman gives the item to the buyer.\n\n""📌 In return, both traders have to vouch for the middleman."
+            "text": (
+                "✅ **How the middleman process works:**\n\n"
+                "1️⃣ The seller passes the item to the middleman.\n"
+                "2️⃣ The buyer pays the seller.\n"
+                "3️⃣ The middleman gives the item to the buyer.\n\n"
+                "📌 In return, both traders have to **vouch** for the middleman."
             ),
             "color": 0x800080,
             "image": "https://i.imgur.com/yourimage2.png"
@@ -389,7 +394,8 @@ else:
         ".scmsg": {
             "title": "🚨 Scam Warning!",
             "text": (
-                "If someone asks you to trade **without a middleman**, it’s a scam."
+                "❌ If someone asks you to trade **without a middleman**, it’s a scam.\n\n"
+                "⚠️ Always use an official verified middleman."
             ),
             "color": 0xFF0000,
             "image": "https://i.imgur.com/yourimage3.png"
@@ -403,24 +409,22 @@ async def on_message(message):
         return
 
     # Check if message matches a trigger
-    trigger = triggers.get(message.content)
+    trigger = triggers.get(message.content.strip())
     if trigger:
         embed = discord.Embed(
             title=trigger.get("title", ""),
-            description=trigger.get("text", ""),
+            description=trigger.get("text", "⚠️ No content found."),
             color=trigger.get("color", 0x2f3136)
         )
+
         if trigger.get("image"):
             embed.set_image(url=trigger["image"])
 
         await message.channel.send(embed=embed)
 
-    # Keep commands like ?scmsg, ?handle working
+    # Keep normal commands working
     await bot.process_commands(message)
 
-
-    # Allow commands like ?scmsg, ?handle, etc. to still work
-    await bot.process_commands(message)
 
 
 
