@@ -647,6 +647,35 @@ async def on_command_completion(ctx):
         # Could not delete message
         pass
 
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    content = message.content.strip()
+
+    # Check triggers that start with ?
+    if content.startswith("?"):
+        cmd_name = content.split()[0]  # Get ?command part
+        if cmd_name in triggers:
+            trigger = triggers[cmd_name]
+            embed = discord.Embed(
+                title=trigger.get("title", ""),
+                description=trigger.get("text", ""),
+                color=trigger.get("color", 0x000000)
+            )
+            if trigger.get("image"):
+                embed.set_image(url=trigger["image"])
+            await message.channel.send(embed=embed)
+            # Delete the user command message
+            try:
+                await message.delete()
+            except:
+                pass
+
+    # Let commands system handle the rest
+    await bot.process_commands(message)
+
 # -----------------------------
 # Persistent tickets saving/loading
 # -----------------------------
