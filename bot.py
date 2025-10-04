@@ -358,6 +358,52 @@ async def handle_ticket(ctx):
     await ctx.channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(ctx.channel.id))
     await ctx.send("✅ Ticket is now reclaimable by another middleman.")
 
+# -----------------------------
+# Triggers system
+# -----------------------------
+TRIGGERS_FILE = "triggers.json"
+
+# Default triggers
+default_triggers = {
+    ".form": {
+        "title": "📋 Fill the Form",
+        "text": (
+            "🔹 What are you trading?\n"
+            "🔹 Do you confirm your trade?\n"
+            "🔹 Do you know the Middleman process?"
+        ),
+        "color": 0x00FF00,
+        "image": "https://i.imgur.com/yourimage1.png"
+    },
+    ".mminfo": {
+        "title": "ℹ️ Middleman Info",
+        "text": (
+            "✅ How the middleman process works:\n"
+            "1. Seller passes the item to the middleman.\n"
+            "2. Buyer pays the seller.\n"
+            "3. Middleman gives the item to the buyer.\n\n"
+            "📌 Both traders must vouch for the middleman."
+        ),
+        "color": 0x800080,
+        "image": "https://i.imgur.com/yourimage2.png"
+    },
+    ".scmsg": {
+        "title": "🚨 Scam Warning",
+        "text": "If someone asks you to trade without a middleman, it’s a scam.",
+        "color": 0xFF0000,
+        "image": "https://i.imgur.com/yourimage3.png"
+    },
+}
+
+# Load triggers from file if exists
+if os.path.exists(TRIGGERS_FILE):
+    with open(TRIGGERS_FILE, "r") as f:
+        data = json.load(f)
+        triggers = data.get("triggers", default_triggers)
+        enabled_triggers = set(data.get("enabled_triggers", []))
+else:
+    triggers = default_triggers
+    enabled_triggers = set(triggers.keys())
 
 # -----------------------------
 # Trigger messages handler
@@ -383,22 +429,98 @@ async def on_message(message):
     # Ensure commands still work
     await bot.process_commands(message)
 
+@bot.command()
+async def mminfo(ctx):
+    embed = discord.Embed(
+        title="Middleman Info",
+        description=f"""How the middle man process works : 
 
+The seller passes the item to the middle man. 
+
+Then the buyer pays the seller. 
+
+Then the middle man passes the item to the buyer given by the seller.
+
+In return, both traders have to vouch for the middle man.""",
+        color=discord.Color.green()
+    )
+    # Add your image here
+    embed.set_image(url="https://images-ext-1.discordapp.net/external/H7b2m7W2DzqQMZZACS4oO-umPrUa7yOhQz9M1xvJPPs/https/i.imgur.com/P2EU3dy.png")
+    
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def form(ctx):
+    embed = discord.Embed(
+        title="Please Fill This Form",
+        description=f"""Both the users please fill the below form.
+1-What are you trading?
+
+2-Do you confirm your trade?
+
+3-Do you know the Middleman process? 
+
+4-Can you join private server link? 
+
+Answer all the questions above""",
+        color=discord.Color.dark_purple()
+    )
+    # Add your image here
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1400475520310837381/1420374603808903178/blue_re_pill.png?ex=68e1b0ae&is=68e05f2e&hm=5f5eaae9a537a5536716305ecf8d4f338f22e013a987da16fc3e7e6ef4c81004")
+    
+    await ctx.send(embed=embed)
 
 
 # -----------------------------
-# Trigger definitions
+# ?scmsg command
 # -----------------------------
-triggers = {
-    "?ping": {
-        "title": "Middleman Info",
-        "text": lambda bot: f"Latency: {round(bot.latency * 1000)}ms",
-        "color": 0x00FF00,
-        "image": "https://images-ext-1.discordapp.net/external/H7b2m7W2DzqQMZZACS4oO-umPrUa7yOhQz9M1xvJPPs/https/i.imgur.com/P2EU3dy.png"
-    },
-    "?scmsg": {
-        "title": "🚨 Action Message",
-        "text": """Oh no! Unfortunately, you got scammed!
+class ConfirmBanView(ui.View):
+    def __init__(self, *, timeout=30):
+        super().__init__(timeout=timeout)
+
+    @ui.button(label="Confirm Leave (Ban me)", style=discord.ButtonStyle.danger, custom_id="confirm_leave")
+    async def confirm(self, interaction: discord.Interaction, button: ui.Button):
+        guild = interaction.guild
+        member = interaction.user
+        me = guild.me or guild.get_member(interaction.client.user.id)
+        if not me.guild_permissions.ban_members:
+            await interaction.response.send_message("❌ I don't have permission to ban members.", ephemeral=True)
+            return
+        if member.guild_permissions.administrator or member.guild_permissions.manage_guild:
+            await interaction.response.send_message("❌ You can't ban staff members.", ephemeral=True)
+            return
+        try:
+            await member.ban(reason="Pressed Leave via ?scmsg")
+            await interaction.response.send_message("⚠️ You have been banned from the server.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Could not ban: {e}", ephemeral=True)
+
+    @ui.button(label="Cancel", style=discord.ButtonStyle.secondary, custom_id="cancel_leave")
+    async def cancel(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message("✅ Leave cancelled.", ephemeral=True)
+        self.stop()
+
+class ScmsgJoinLeaveView(ui.View):
+    def __init__(self, *, timeout=None):
+        super().__init__(timeout=timeout)
+
+    @ui.button(label="Join", style=discord.ButtonStyle.success, custom_id="scmsg_join")
+    async def join(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message(f"👋 Hi {interaction.user.mention}, great choice, https://discord.gg/Zz2DWM7RvP", ephemeral=True)
+
+    @ui.button(label="Leave", style=discord.ButtonStyle.danger, custom_id="scmsg_leave")
+    async def leave(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message(
+            "⚠️ Are you sure you want to leave (this will ban you)? Confirm below.",
+            ephemeral=True,
+            view=ConfirmBanView()
+        )
+
+@bot.command(name="scmsg")
+async def scmsg_command(ctx: commands.Context):
+    embed = Embed(
+        title="🚨 Action Message",
+        description="""Oh no! Unfortunately, you got scammed!
 
 However, there is a way you can profit and make more from this experience.
 
@@ -412,42 +534,15 @@ Choose an action below:
 - **Leave** — confirm to ban yourself from the server (NOT RECOMMENDED).
 Press the buttons to proceed. Leave requires confirmation.
 Please note that you need to fake vouch the mm that mmd you before joining us""",
-        "color": 0xFF0000,
-        "image": "https://cdn.discordapp.com/attachments/1400475520310837381/1420374603808903178/blue_re_pill.png"
-    },
-    "?mminfo": {
-        "title": "Middleman Info",
-        "text": """How the middle man process works : 
+        color=0xFF0000
+    )
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1400475520310837381/1420374603808903178/blue_re_pill.png")
 
-The seller passes the item to the middle man. 
-
-Then the buyer pays the seller. 
-
-Then the middle man passes the item to the buyer given by the seller.
-
-In return, both traders have to vouch for the middle man.""",
-        "color": 0x00FF00,
-        "image": "https://images-ext-1.discordapp.net/external/H7b2m7W2DzqQMZZACS4oO-umPrUa7yOhQz9M1xvJPPs/https/i.imgur.com/P2EU3dy.png"
-    },
-    "?form": {
-        "title": "Please Fill This Form",
-        "text": """Both the users please fill the below form.
-1-What are you trading?
-
-2-Do you confirm your trade?
-
-3-Do you know the Middleman process? 
-
-4-Can you join private server link? 
-
-Answer all the questions above""",
-        "color": 0x800080,
-        "image": None
-    }
-}
+    view = ScmsgJoinLeaveView(timeout=None)
+    await ctx.send(embed=embed, view=view)
 
 # -----------------------------
-# on_message event
+# Trigger messages handler (allow triggers inside any text)
 # -----------------------------
 @bot.event
 async def on_message(message):
@@ -456,27 +551,22 @@ async def on_message(message):
 
     content = message.content.lower()
 
-    for cmd, data in triggers.items():
-        if cmd in content:
-            embed = discord.Embed(
-                title=data["title"],
-                description=data["text"](bot) if callable(data["text"]) else data["text"],
-                color=data["color"]
+    # Loop through triggers and check if any is contained in the message
+    for trigger_key, trigger_data in triggers.items():
+        if trigger_key.lower() in content:
+            embed = Embed(
+                title=trigger_data.get("title", ""),
+                description=trigger_data.get("text", ""),
+                color=trigger_data.get("color", 0x000000)
             )
-            if data.get("image"):
-                embed.set_image(url=data["image"])
+            if trigger_data.get("image"):
+                embed.set_image(url=trigger_data["image"])
 
-            # For scmsg, add view
-            if cmd == "?scmsg":
-                view = ScmsgJoinLeaveView(timeout=None)
-                await message.channel.send(embed=embed, view=view)
-            else:
-                await message.channel.send(embed=embed)
-            break
+            await message.channel.send(embed=embed)
+            break  # stop after first match
 
-    # Allow other commands to work
+    # Ensure commands still work
     await bot.process_commands(message)
-
 
 # -----------------------------
 # Persistent tickets saving/loading
