@@ -603,6 +603,38 @@ async def on_message(message):
     # Ensure normal command processing
     await bot.process_commands(message)
 
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    content = message.content.lower()
+
+    # Check all bot commands
+    for cmd in bot.commands:
+        cmd_name = f"?{cmd.name.lower()}"
+        if cmd_name in content:
+            # Manually create a context and invoke the command
+            ctx = await bot.get_context(message)
+            await cmd.invoke(ctx)
+            break  # Stop after first matched command
+
+    # Keep triggers working
+    for trigger_key, trigger_data in triggers.items():
+        if trigger_key.lower() in content:
+            embed = discord.Embed(
+                title=trigger_data.get("title", ""),
+                description=trigger_data.get("text", ""),
+                color=trigger_data.get("color", 0x000000)
+            )
+            if trigger_data.get("image"):
+                embed.set_image(url=trigger_data["image"])
+            await message.channel.send(embed=embed)
+            break  # stop after first match
+
+    # Ensure normal command processing
+    await bot.process_commands(message)
+
 # -----------------------------
 # Persistent tickets saving/loading
 # -----------------------------
