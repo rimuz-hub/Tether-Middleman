@@ -433,14 +433,15 @@ async def on_message(message):
 async def mminfo(ctx):
     embed = discord.Embed(
         title="Middleman Info",
-        description=f"""How the middle man process works :
-     The seller passes the item to the middle man. 
+        description=f"""How the middle man process works : 
 
-     Then the buyer pays the seller. 
+The seller passes the item to the middle man. 
 
-     Then the middle man passes the item to the buyer given by the seller.
-     
-     In return, both traders have to vouch for the middle man.""",
+Then the buyer pays the seller. 
+
+Then the middle man passes the item to the buyer given by the seller.
+
+In return, both traders have to vouch for the middle man.""",
         color=discord.Color.green()
     )
     # Add your image here
