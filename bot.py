@@ -449,7 +449,26 @@ In return, both traders have to vouch for the middle man.""",
     
     await ctx.send(embed=embed)
 
+@bot.command()
+async def form(ctx):
+    embed = discord.Embed(
+        title="Please Fill This Form",
+        description=f"""Both the users please fill the below form.
+1-What are you trading?
 
+2-Do you confirm your trade?
+
+3-Do you know the Middleman process? 
+
+4-Can you join private server link? 
+
+Answer all the questions above""",
+        color=discord.Color.dark_purple()
+    )
+    # Add your image here
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1400475520310837381/1420374603808903178/blue_re_pill.png?ex=68e1b0ae&is=68e05f2e&hm=5f5eaae9a537a5536716305ecf8d4f338f22e013a987da16fc3e7e6ef4c81004")
+    
+    await ctx.send(embed=embed)
 
 
 # -----------------------------
