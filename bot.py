@@ -380,12 +380,7 @@ else:
 
         ".mminfo": {
             "title": "ℹ️ Middleman Info!",
-            "text": (
-                "✅ How the middleman process works:\n"
-                "1. The seller passes the item to the middleman.\n"
-                "2. The buyer pays the seller.\n"
-                "3. The middleman gives the item to the buyer.\n\n"
-                "📌 In return, both traders have to vouch for the middleman."
+            "text": ("✅ How the middleman process works:\n""1. The seller passes the item to the middleman.\n""2. The buyer pays the seller.\n""3. The middleman gives the item to the buyer.\n\n""📌 In return, both traders have to vouch for the middleman."
             ),
             "color": 0x800080,
             "image": "https://i.imgur.com/yourimage2.png"
