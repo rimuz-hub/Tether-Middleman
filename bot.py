@@ -358,35 +358,48 @@ async def handle_ticket(ctx):
     await ctx.channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(ctx.channel.id))
     await ctx.send("✅ Ticket is now reclaimable by another middleman.")
 
-triggers = {
-    ".form": {
-        "text": (
-            "Fill the form!\n"
-            "1. What are you trading?\n"
-            "2. Do you confirm your trade?\n"
-            "3. Do you know the Middleman process?"
-        ),
-        "color": 0x00FF00,
-        "image": "https://i.imgur.com/P2EU3dy.png"  # <-- put any image URL here
-    },
-    ".mminfo": {
-        "text": (
-            "Middleman info!\n"
-            "How the middleman process works:\n"
-            "1. The seller passes the item to the middleman.\n"
-            "2. Then the buyer pays the seller.\n"
-            "3. The middleman delivers the item to the buyer.\n"
-            "4. Both traders have to vouch for the middleman."
-        ),
-        "color": 0x800080,
-        "image": "https://images-ext-1.discordapp.net/external/H7b2m7W2DzqQMZZACS4oO-umPrUa7yOhQz9M1xvJPPs/https/i.imgur.com/P2EU3dy.png"  # another image
-    },
-    ".scmsg": {
-        "text": "Scam message!",
-        "color": 0xFF0000,
-        
-    },
-}
+TRIGGERS_FILE = "triggers.json"
+
+if os.path.exists(TRIGGERS_FILE):
+    with open(TRIGGERS_FILE, "r") as f:
+        data = json.load(f)
+        triggers = data.get("triggers", {})
+        enabled_triggers = set(data.get("enabled_triggers", []))
+else:
+    triggers = {
+        ".form": {
+            "text": (
+                "**📋 Fill the form!**\n\n"
+                "🔹 What are you trading?\n"
+                "🔹 Do you confirm your trade?\n"
+                "🔹 Do you know the Middleman process?"
+            ),
+            "color": 0x00FF00,
+            "image": "https://i.imgur.com/yourimage1.png"
+        },
+
+        ".mminfo": {
+            "text": (
+                "**ℹ️ Middleman Info!**\n\n"
+                "✅ How the middleman process works:\n"
+                "1. The seller passes the item to the middleman.\n"
+                "2. The buyer pays the seller.\n"
+                "3. The middleman gives the item to the buyer.\n\n"
+                "📌 In return, both traders have to vouch for the middleman."
+            ),
+            "color": 0x800080,
+            "image": "https://i.imgur.com/yourimage2.png"
+        },
+
+        ".scmsg": {
+            "text": (
+                "🚨 **Scam Warning!**\n\n"
+                "If someone asks you to trade without a middleman, it’s a scam."
+            ),
+            "color": 0xFF0000,
+            "image": "https://i.imgur.com/yourimage3.png"
+        },
+    }
 
 
 # -----------------------------
