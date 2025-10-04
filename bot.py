@@ -422,6 +422,18 @@ async def on_message(message: discord.Message):
 
     # Make sure normal commands still work
     await bot.process_commands(message)
+    trigger = triggers.get(message.content)
+    
+if trigger:
+    embed = Embed(
+        title=trigger.get("title", ""),
+        description=trigger.get("text", ""),
+        color=trigger["color"]
+    )
+    if trigger.get("image"):
+        embed.set_image(url=trigger["image"])
+    await message.channel.send(embed=embed)
+
 
 
 # -----------------------------
