@@ -433,10 +433,10 @@ async def on_message(message):
 # Example simple command
 # -----------------------------
 @bot.command()
-async def ping(ctx):
-    await ctx.send("meow" \
-    "moew" \
-    "meow")
+async def meow(ctx):
+    await ctx.send("meow\n" \
+    "              moew\n" \
+    "              meow")
 
 
 # -----------------------------
