@@ -808,7 +808,11 @@ class ConfirmView(View):
             view=None,
         )
 
-# Mapping of text color names to discord.Colour
+from discord.ext import commands
+import discord
+
+bot = commands.Bot(command_prefix='?')
+
 COLOR_MAP = {
     "default": discord.Colour.default(),
     "blue": discord.Colour.blue(),
@@ -837,30 +841,35 @@ COLOR_MAP = {
 }
 
 @bot.command()
-async def embedcreate(ctx, *args):
+async def embedcreate(ctx, *, args):
     """
     Usage: ?embedcreate <title> | <content> | <color_name>
-    Example: ?embedcreate My Title | This is my content | red
+    Supports multi-line content with \n
     """
     try:
-        full_text = " ".join(args)
-        parts = [part.strip() for part in full_text.split('|')]
+        # Split into 3 parts: title | content | color
+        parts = [part.strip() for part in args.split('|')]
 
         if len(parts) != 3:
             return await ctx.send("Please use the format: `?embedcreate <title> | <content> | <color_name>`")
 
         title, content, color_name = parts
 
-        color_name = color_name.lower()
-        color = COLOR_MAP.get(color_name, discord.Colour.default())  # fallback to default
+        # Replace literal "\n" with newlines
+        content = content.replace("\\n", "\n")
 
+        color_name = color_name.lower()
+        color = COLOR_MAP.get(color_name, discord.Colour.default())
+
+        # Always create a fresh embed
         embed = discord.Embed(title=title, description=content, color=color)
+
         await ctx.send(embed=embed)
 
     except Exception as e:
         await ctx.send(f"Error creating embed: {e}")
 
-
+bot.run("YOUR_TOKEN_HERE")
 
 
 # ---------- Command ----------
