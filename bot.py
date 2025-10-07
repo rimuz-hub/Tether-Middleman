@@ -903,6 +903,7 @@ async def on_ready():
     bot.add_view(RequestView())
     for ticket_id in tickets.keys():
         bot.add_view(ClaimView(ticket_id))
+    await bot.tree.sync()
     print(f"✅ Logged in as {bot.user}")
 
 keep_alive()
