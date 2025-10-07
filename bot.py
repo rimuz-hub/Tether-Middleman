@@ -676,6 +676,162 @@ async def on_message(message):
     # Let commands system handle the rest
     await bot.process_commands(message)
 
+DATA_FILE = "trades.json"
+
+
+# ---------- Utility: Load / Save ----------
+def load_data():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_data():
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(trade_sessions, f, indent=2)
+
+
+# Load existing data at startup
+trade_sessions = load_data()
+
+
+# ---------- Trade Form Modal ----------
+class TradeForm(Modal, title="📝 Trader Form"):
+    q1 = TextInput(label="1 - What are you trading?", style=discord.TextStyle.short)
+    q2 = TextInput(label="2 - Do you confirm your trade?", style=discord.TextStyle.short)
+    q3 = TextInput(label="3 - Do you know the Middleman process?", style=discord.TextStyle.short)
+    q4 = TextInput(label="4 - Can you join private server link?", style=discord.TextStyle.short)
+
+    def __init__(self, trade_id, user_id):
+        super().__init__()
+        self.trade_id = str(trade_id)
+        self.user_id = str(user_id)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        trade_sessions.setdefault(self.trade_id, {"forms": {}, "confirmations": []})
+        trade_sessions[self.trade_id]["forms"][self.user_id] = {
+            "What are you trading?": self.q1.value,
+            "Do you confirm your trade?": self.q2.value,
+            "Do you know the Middleman process?": self.q3.value,
+            "Can you join private server link?": self.q4.value,
+        }
+        save_data()
+
+        await interaction.response.send_message("✅ Your form has been submitted!", ephemeral=True)
+
+        if len(trade_sessions[self.trade_id]["forms"]) == 2:
+            channel = bot.get_channel(int(self.trade_id))
+            if channel:
+                traders = list(trade_sessions[self.trade_id]["forms"].keys())
+                summary = ""
+                for uid, answers in trade_sessions[self.trade_id]["forms"].items():
+                    user = bot.get_user(int(uid))
+                    summary += f"**{user}’s Answers:**\n"
+                    for k, v in answers.items():
+                        summary += f"• {k}: {v}\n"
+                    summary += "\n"
+
+                embed = discord.Embed(
+                    title="✅ Both Traders Filled the Form!",
+                    description=summary,
+                    color=discord.Color.green(),
+                )
+                await channel.send(embed=embed, view=ConfirmView(self.trade_id, traders))
+                save_data()
+
+
+# ---------- Fill Form Button ----------
+class FillFormView(View):
+    def __init__(self, trade_id):
+        super().__init__(timeout=None)
+        self.trade_id = str(trade_id)
+
+    @discord.ui.button(label="📋 Fill Form", style=discord.ButtonStyle.primary)
+    async def fill(self, interaction: discord.Interaction, button: Button):
+        modal = TradeForm(self.trade_id, interaction.user.id)
+        await interaction.response.send_modal(modal)
+
+
+# ---------- Confirm / Cancel Buttons ----------
+class ConfirmView(View):
+    def __init__(self, trade_id, traders):
+        super().__init__(timeout=None)
+        self.trade_id = str(trade_id)
+        self.traders = [str(t) for t in traders]
+
+    @discord.ui.button(label="✅ Confirm", style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: discord.Interaction, button: Button):
+        session = trade_sessions.get(self.trade_id)
+        if not session:
+            await interaction.response.send_message("⛔ This trade no longer exists.", ephemeral=True)
+            return
+
+        if str(interaction.user.id) not in self.traders:
+            await interaction.response.send_message("⛔ You are not part of this trade.", ephemeral=True)
+            return
+
+        if str(interaction.user.id) in session["confirmations"]:
+            await interaction.response.send_message("✅ You already confirmed.", ephemeral=True)
+            return
+
+        session["confirmations"].append(str(interaction.user.id))
+        save_data()
+        await interaction.response.send_message("✅ You have confirmed!", ephemeral=True)
+
+        if len(session["confirmations"]) == 2:
+            channel = bot.get_channel(int(self.trade_id))
+            if channel:
+                await channel.send(
+                    embed=discord.Embed(
+                        title="🎉 Trade Fully Confirmed!",
+                        description="Both traders have confirmed ✅",
+                        color=discord.Color.gold(),
+                    )
+                )
+            trade_sessions.pop(self.trade_id, None)
+            save_data()
+
+    @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: Button):
+        if str(interaction.user.id) not in self.traders:
+            await interaction.response.send_message("⛔ You are not part of this trade.", ephemeral=True)
+            return
+
+        trade_sessions.pop(self.trade_id, None)
+        save_data()
+
+        await interaction.response.send_message("❌ Trade canceled.", ephemeral=True)
+        await interaction.message.edit(
+            embed=discord.Embed(
+                title="❌ Trade Canceled",
+                description=f"Canceled by {interaction.user.mention}",
+                color=discord.Color.red(),
+            ),
+            view=None,
+        )
+
+
+# ---------- Command ----------
+@bot.command()
+async def forms(ctx: commands.Context):
+    """Starts a trade verification form."""
+    trade_sessions[str(ctx.channel.id)] = {"forms": {}, "confirmations": []}
+    save_data()
+
+    embed = discord.Embed(
+        title="🤝 Trade Verification Form",
+        description=(
+            "Both the users please fill the below form.\n"
+            "1️⃣ What are you trading?\n"
+            "2️⃣ Do you confirm your trade?\n"
+            "3️⃣ Do you know the Middleman process?\n"
+            "4️⃣ Can you join private server link?\n\n"
+            "Click the button below to fill the form."
+        ),
+        color=discord.Color.blurple(),
+    )
+    await ctx.send(embed=embed, view=FillFormView(ctx.channel.id))
+    await ctx.send("⏳ Waiting for both traders to complete the form...")
 # -----------------------------
 # Persistent tickets saving/loading
 # -----------------------------
