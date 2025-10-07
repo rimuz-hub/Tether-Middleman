@@ -763,8 +763,11 @@ class ConfirmView(View):
         save_data()
         await interaction.response.send_message("✅ You have confirmed!", ephemeral=True)
 
-        # ✅ Both confirmed — announce!
-        if len(session["confirmations"]) == 2:
+        # ✅ Both confirmed — but only announce once
+        if len(session["confirmations"]) == 2 and not session.get("finalized"):
+            session["finalized"] = True  # prevent duplicates
+            save_data()
+
             channel = bot.get_channel(int(self.trade_id))
             if channel:
                 trader_mentions = " ".join(f"<@{uid}>" for uid in self.traders)
@@ -774,16 +777,17 @@ class ConfirmView(View):
                         "Both traders have confirmed their agreement successfully.\n\n"
                         "📦 Please now hand your items to the middleman."
                     ),
-                    color=discord.Color.gold()
+                    color=discord.Color.gold(),
                 )
                 await channel.send(
                     content=f"🎉 Trade Fully Confirmed by both traders! {trader_mentions}",
-                    embed=embed
+                    embed=embed,
                 )
 
-            # Clean up trade session after announcement
+            # Clean up after announcement
             trade_sessions.pop(self.trade_id, None)
             save_data()
+
 
     @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: Button):
