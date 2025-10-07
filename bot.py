@@ -819,51 +819,39 @@ COLOR_MAP = {
     "magenta": discord.Colour.magenta(),
     "teal": discord.Colour.teal(),
     "gold": discord.Colour.gold(),
-    "dark_blue": discord.Colour.dark_blue(),
-    "dark_green": discord.Colour.dark_green(),
-    "dark_red": discord.Colour.dark_red(),
-    "dark_orange": discord.Colour.dark_orange(),
-    "dark_purple": discord.Colour.dark_purple(),
-    "dark_magenta": discord.Colour.dark_magenta(),
-    "dark_teal": discord.Colour.dark_teal(),
-    "dark_gold": discord.Colour.dark_gold(),
-    "light_grey": discord.Colour.light_grey(),
-    "dark_grey": discord.Colour.dark_grey(),
-    "darker_grey": discord.Colour.darker_grey(),
-    "lighter_grey": discord.Colour.lighter_grey(),
     "blurple": discord.Colour.blurple(),
     "greyple": discord.Colour.greyple(),
-    "dark_theme": discord.Colour.dark_theme()
 }
 
-@bot.command()
-async def embedcreate(ctx, *, args):
-    """
-    Usage: ?embedcreate <title> | <content> | <color_name>
-    Supports multi-line content with \n
-    """
-    try:
-        # Split into 3 parts: title | content | color
-        parts = [part.strip() for part in args.split('|')]
+# ---------- Modal for multi-line input ----------
+class EmbedModal(ui.Modal, title="Create Embed"):
+    title_input = ui.TextInput(label="Embed Title", style=discord.TextStyle.short, required=True)
+    content_input = ui.TextInput(label="Embed Content", style=discord.TextStyle.paragraph, required=True)
+    color_input = ui.TextInput(label="Embed Color (name, e.g., red, blue)", style=discord.TextStyle.short, required=False)
 
-        if len(parts) != 3:
-            return await ctx.send("Please use the format: `?embedcreate <title> | <content> | <color_name>`")
+    def __init__(self, ctx):
+        super().__init__()
+        self.ctx = ctx
 
-        title, content, color_name = parts
-
-        # Replace literal "\n" with newlines
-        content = content.replace("\\n", "\n")
-
-        color_name = color_name.lower()
+    async def on_submit(self, interaction: Interaction):
+        title = self.title_input.value
+        content = self.content_input.value
+        color_name = self.color_input.value.lower() if self.color_input.value else "default"
         color = COLOR_MAP.get(color_name, discord.Colour.default())
 
-        # Always create a fresh embed
-        embed = discord.Embed(title=title, description=content, color=color)
+        embed = Embed(title=title, description=content, color=color)
+        await interaction.response.send_message(embed=embed)
+        await self.ctx.send(f"✅ Embed created by {interaction.user.mention}!")
 
-        await ctx.send(embed=embed)
+# ---------- Command to trigger modal ----------
+@bot.command()
+async def embedcreate(ctx):
+    """Open a modal to create a multi-line embed"""
+    await ctx.send("📝 Fill out the embed details below:", ephemeral=True)
+    modal = EmbedModal(ctx)
+    await ctx.send_modal(modal)
 
-    except Exception as e:
-        await ctx.send(f"Error creating embed: {e}")
+
 
 
 
