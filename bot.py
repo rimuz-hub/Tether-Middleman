@@ -828,7 +828,7 @@ async def form(ctx: commands.Context):
     await ctx.send(embed=embed, view=FillFormView(ctx.channel.id))
     await ctx.send("⏳ Waiting for both traders to complete the form...")
 
-    @bot.command(name="cmds")
+@bot.command(name="cmds")
 async def cmds(ctx: commands.Context):
     """Displays a list of all commands."""
     embed = discord.Embed(
