@@ -808,10 +808,6 @@ class ConfirmView(View):
             view=None,
         )
 
-from discord.ext import commands
-import discord
-
-bot = commands.Bot(command_prefix='?')
 
 COLOR_MAP = {
     "default": discord.Colour.default(),
@@ -869,7 +865,6 @@ async def embedcreate(ctx, *, args):
     except Exception as e:
         await ctx.send(f"Error creating embed: {e}")
 
-bot.run("YOUR_TOKEN_HERE")
 
 
 # ---------- Command ----------
