@@ -775,7 +775,7 @@ class ConfirmView(View):
                     title="✅ Trade Finalized!",
                     description=(
                         "Both traders have confirmed their agreement successfully.\n\n"
-                        "📦 Please now hand your items to the middleman."
+                        "**📦 Please now hand your items to the middleman.**"
                     ),
                     color=discord.Color.gold(),
                 )
@@ -827,6 +827,29 @@ async def form(ctx: commands.Context):
     )
     await ctx.send(embed=embed, view=FillFormView(ctx.channel.id))
     await ctx.send("⏳ Waiting for both traders to complete the form...")
+
+    @bot.command(name="cmds")
+async def cmds(ctx: commands.Context):
+    """Displays a list of all commands."""
+    embed = discord.Embed(
+        title="📜 Bot Commands",
+        description="Here are all available commands:",
+        color=discord.Color.blue()
+    )
+
+    for command in bot.commands:
+        # Skip hidden commands if needed
+        if command.hidden:
+            continue
+        # Add command name and short help
+        embed.add_field(
+            name=f"?{command.name}",
+            value=command.help or "No description provided.",
+            inline=False
+        )
+
+    await ctx.send(embed=embed)
+
 # -----------------------------
 # Persistent tickets saving/loading
 # -----------------------------
