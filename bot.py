@@ -53,7 +53,6 @@ class MyBot(commands.Bot):
         super().__init__(**kwargs)
         self.tree = app_commands.CommandTree(self)
 
-bot = MyBot(command_prefix="?", intents=intents)
 
 # ---------------- Embed Create Slash Command ----------------
 @bot.tree.command(name="embedcreate", description="Create a custom embed")
