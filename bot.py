@@ -8,6 +8,7 @@ from threading import Thread
 import asyncio
 import json
 from discord.ui import View, Button, Modal, TextInput
+from discord import app_commands, ui, Interaction, Embed
 
 # -----------------------------
 # Keep-alive web server (for Replit/Railway)
@@ -808,53 +809,6 @@ class ConfirmView(View):
             view=None,
         )
 
-
-COLOR_MAP = {
-    "default": discord.Colour.default(),
-    "blue": discord.Colour.blue(),
-    "green": discord.Colour.green(),
-    "red": discord.Colour.red(),
-    "orange": discord.Colour.orange(),
-    "purple": discord.Colour.purple(),
-    "magenta": discord.Colour.magenta(),
-    "teal": discord.Colour.teal(),
-    "gold": discord.Colour.gold(),
-    "blurple": discord.Colour.blurple(),
-    "greyple": discord.Colour.greyple(),
-}
-
-# ---------- Modal for multi-line input ----------
-class EmbedModal(ui.Modal, title="Create Embed"):
-    title_input = ui.TextInput(label="Embed Title", style=discord.TextStyle.short, required=True)
-    content_input = ui.TextInput(label="Embed Content", style=discord.TextStyle.paragraph, required=True)
-    color_input = ui.TextInput(label="Embed Color (name, e.g., red, blue)", style=discord.TextStyle.short, required=False)
-
-    def __init__(self, ctx):
-        super().__init__()
-        self.ctx = ctx
-
-    async def on_submit(self, interaction: Interaction):
-        title = self.title_input.value
-        content = self.content_input.value
-        color_name = self.color_input.value.lower() if self.color_input.value else "default"
-        color = COLOR_MAP.get(color_name, discord.Colour.default())
-
-        embed = Embed(title=title, description=content, color=color)
-        await interaction.response.send_message(embed=embed)
-        await self.ctx.send(f"✅ Embed created by {interaction.user.mention}!")
-
-# ---------- Command to trigger modal ----------
-@bot.command()
-async def embedcreate(ctx):
-    """Open a modal to create a multi-line embed"""
-    await ctx.send("📝 Fill out the embed details below:", ephemeral=True)
-    modal = EmbedModal(ctx)
-    await ctx.send_modal(modal)
-
-
-
-
-
 # ---------- Command ----------
 @bot.command()
 async def form(ctx: commands.Context):
@@ -872,6 +826,32 @@ async def form(ctx: commands.Context):
     )
     await ctx.send(embed=embed, view=FillFormView(ctx.channel.id))
     await ctx.send("⏳ Waiting for both traders to complete the form...")
+
+# ---------- Modal for multi-line input ----------
+class EmbedModal(ui.Modal, title="Create Embed"):
+    title_input = ui.TextInput(label="Embed Title", style=discord.TextStyle.short, required=True)
+    content_input = ui.TextInput(label="Embed Content", style=discord.TextStyle.paragraph, required=True)
+    color_input = ui.TextInput(label="Embed Color (e.g., red, blue)", style=discord.TextStyle.short, required=False)
+
+    def __init__(self, interaction: Interaction):
+        super().__init__()
+        self.interaction = interaction
+
+    async def on_submit(self, interaction: Interaction):
+        title = self.title_input.value
+        content = self.content_input.value
+        color_name = self.color_input.value.lower() if self.color_input.value else "default"
+        color = COLOR_MAP.get(color_name, discord.Colour.default())
+
+        embed = Embed(title=title, description=content, color=color)
+        await interaction.response.send_message(embed=embed)
+        await self.interaction.followup.send(f"✅ Embed created by {interaction.user.mention}!", ephemeral=True)
+
+# ---------- Slash command ----------
+@bot.tree.command(name="embedcreate", description="Open a modal to create a multi-line embed")
+async def embedcreate(interaction: Interaction):
+    modal = EmbedModal(interaction)
+    await interaction.response.send_modal(modal)
 
 @bot.command(name="cmds")
 async def cmds(ctx: commands.Context):
