@@ -47,6 +47,21 @@ bot = commands.Bot(command_prefix="?", intents=intents)
 
 tickets = {}  # channel_id -> ticket info
 
+
+class MyBot(commands.Bot):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.tree = app_commands.CommandTree(self)
+
+bot = MyBot(command_prefix="?", intents=intents)
+
+# ---------------- Embed Create Slash Command ----------------
+@bot.tree.command(name="embedcreate", description="Create a custom embed")
+@app_commands.guilds(discord.Object(id=1346001535292932148))  # Optional: limit to your guild
+async def embedcreate(interaction: discord.Interaction):
+    """Open a modal to create a multi-line embed"""
+    modal = EmbedModal(interaction)
+    await interaction.response.send_modal(modal)  # no ephemeral message shown
 # -----------------------------
 # Persistent Views
 # -----------------------------
@@ -824,6 +839,8 @@ COLOR_MAP = {
     "greyple": discord.Colour.greyple(),
 }
 
+
+
 # ---------- Command ----------
 @bot.command()
 async def form(ctx: commands.Context):
@@ -910,7 +927,13 @@ def load_tickets():
 
 load_tickets()
 
-GUILD_ID = 1346001535292932148  # your guild/server ID
+guild_ids = [1346001535292932148, 1343875621201121352]
+
+@bot.tree.command(name="embedcreate", description="Create a custom embed")
+@app_commands.guilds(*[discord.Object(id=g) for g in guild_ids])
+async def embedcreate(interaction: discord.Interaction):
+    modal = EmbedModal(interaction)
+    await interaction.response.send_modal(modal)
 
 # -----------------------------
 # On ready
