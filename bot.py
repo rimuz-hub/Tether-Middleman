@@ -808,6 +808,59 @@ class ConfirmView(View):
             view=None,
         )
 
+# Mapping of text color names to discord.Colour
+COLOR_MAP = {
+    "default": discord.Colour.default(),
+    "blue": discord.Colour.blue(),
+    "green": discord.Colour.green(),
+    "red": discord.Colour.red(),
+    "orange": discord.Colour.orange(),
+    "purple": discord.Colour.purple(),
+    "magenta": discord.Colour.magenta(),
+    "teal": discord.Colour.teal(),
+    "gold": discord.Colour.gold(),
+    "dark_blue": discord.Colour.dark_blue(),
+    "dark_green": discord.Colour.dark_green(),
+    "dark_red": discord.Colour.dark_red(),
+    "dark_orange": discord.Colour.dark_orange(),
+    "dark_purple": discord.Colour.dark_purple(),
+    "dark_magenta": discord.Colour.dark_magenta(),
+    "dark_teal": discord.Colour.dark_teal(),
+    "dark_gold": discord.Colour.dark_gold(),
+    "light_grey": discord.Colour.light_grey(),
+    "dark_grey": discord.Colour.dark_grey(),
+    "darker_grey": discord.Colour.darker_grey(),
+    "lighter_grey": discord.Colour.lighter_grey(),
+    "blurple": discord.Colour.blurple(),
+    "greyple": discord.Colour.greyple(),
+    "dark_theme": discord.Colour.dark_theme()
+}
+
+@bot.command()
+async def embedcreate(ctx, *args):
+    """
+    Usage: ?embedcreate <title> | <content> | <color_name>
+    Example: ?embedcreate My Title | This is my content | red
+    """
+    try:
+        full_text = " ".join(args)
+        parts = [part.strip() for part in full_text.split('|')]
+
+        if len(parts) != 3:
+            return await ctx.send("Please use the format: `?embedcreate <title> | <content> | <color_name>`")
+
+        title, content, color_name = parts
+
+        color_name = color_name.lower()
+        color = COLOR_MAP.get(color_name, discord.Colour.default())  # fallback to default
+
+        embed = discord.Embed(title=title, description=content, color=color)
+        await ctx.send(embed=embed)
+
+    except Exception as e:
+        await ctx.send(f"Error creating embed: {e}")
+
+
 
 
 # ---------- Command ----------
