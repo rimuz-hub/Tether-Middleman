@@ -692,8 +692,13 @@ class TradeForm(Modal, title="📝 Trader Form"):
     async def on_submit(self, interaction: discord.Interaction):
         trade_sessions.setdefault(self.trade_id, {"forms": {}, "confirmations": []})
         trade_sessions[self.trade_id]["forms"][self.user_id] = {
-            "Click the button underneath to fill the ticket forms": self.q1.value,
+            "What are you trading?": self.q1.value,
             
+            "Do you confirm your trade?": self.q2.value,
+
+            "Do you know the Middleman process?": self.q3.value,
+
+            "Can you join private server link?": self.q4.value,
         }
         save_data()
 
@@ -793,7 +798,7 @@ class ConfirmView(View):
 
 # ---------- Command ----------
 @bot.command()
-async def forms(ctx: commands.Context):
+async def form(ctx: commands.Context):
     """Starts a trade verification form."""
     trade_sessions[str(ctx.channel.id)] = {"forms": {}, "confirmations": []}
     save_data()
@@ -801,12 +806,8 @@ async def forms(ctx: commands.Context):
     embed = discord.Embed(
         title="🤝 Trade Verification Form",
         description=(
-            "Both the users please fill the below form.\n"
-            "1️⃣ What are you trading?\n"
-            "2️⃣ Do you confirm your trade?\n"
-            "3️⃣ Do you know the Middleman process?\n"
-            "4️⃣ Can you join private server link?\n\n"
-            "Click the button below to fill the form."
+            "Click the button underneath to fill the ticket forms\n"
+        
         ),
         color=discord.Color.blurple(),
     )
