@@ -809,6 +809,21 @@ class ConfirmView(View):
             view=None,
         )
 
+# ---------- Color map for embedcreate ----------
+COLOR_MAP = {
+    "default": discord.Colour.default(),
+    "blue": discord.Colour.blue(),
+    "green": discord.Colour.green(),
+    "red": discord.Colour.red(),
+    "orange": discord.Colour.orange(),
+    "purple": discord.Colour.purple(),
+    "magenta": discord.Colour.magenta(),
+    "teal": discord.Colour.teal(),
+    "gold": discord.Colour.gold(),
+    "blurple": discord.Colour.blurple(),
+    "greyple": discord.Colour.greyple(),
+}
+
 # ---------- Command ----------
 @bot.command()
 async def form(ctx: commands.Context):
