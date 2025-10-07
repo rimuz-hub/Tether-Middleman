@@ -763,17 +763,25 @@ class ConfirmView(View):
         save_data()
         await interaction.response.send_message("✅ You have confirmed!", ephemeral=True)
 
+        # ✅ Both confirmed — announce!
         if len(session["confirmations"]) == 2:
             channel = bot.get_channel(int(self.trade_id))
             if channel:
-                await channel.send(
-                    embed=discord.Embed(
-                        title="🎉 Trade Fully Confirmed!",
-                        description="Both traders have confirmed ✅"
-                        "Now both traders please hand your items to the middleman",
-                        color=discord.Color.gold(),
-                    )
+                trader_mentions = " ".join(f"<@{uid}>" for uid in self.traders)
+                embed = discord.Embed(
+                    title="✅ Trade Finalized!",
+                    description=(
+                        "Both traders have confirmed their agreement successfully.\n\n"
+                        "📦 Please now hand your items to the middleman."
+                    ),
+                    color=discord.Color.gold()
                 )
+                await channel.send(
+                    content=f"🎉 Trade Fully Confirmed by both traders! {trader_mentions}",
+                    embed=embed
+                )
+
+            # Clean up trade session after announcement
             trade_sessions.pop(self.trade_id, None)
             save_data()
 
@@ -795,6 +803,7 @@ class ConfirmView(View):
             ),
             view=None,
         )
+
 
 
 # ---------- Command ----------
