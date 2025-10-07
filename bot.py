@@ -769,7 +769,8 @@ class ConfirmView(View):
                 await channel.send(
                     embed=discord.Embed(
                         title="🎉 Trade Fully Confirmed!",
-                        description="Both traders have confirmed ✅",
+                        description="Both traders have confirmed ✅"
+                        "Now both traders please hand your items to the middleman",
                         color=discord.Color.gold(),
                     )
                 )
