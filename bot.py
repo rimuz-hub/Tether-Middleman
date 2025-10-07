@@ -895,16 +895,24 @@ def load_tickets():
 
 load_tickets()
 
+GUILD_ID = 1346001535292932148  # your guild/server ID
+
 # -----------------------------
 # On ready
 # -----------------------------
 @bot.event
 async def on_ready():
+    # Add persistent views
     bot.add_view(RequestView())
     for ticket_id in tickets.keys():
         bot.add_view(ClaimView(ticket_id))
-    await bot.tree.sync()
-    print(f"✅ Logged in as {bot.user}")
+
+    # Sync commands to your guild instantly
+    guild = discord.Object(id=GUILD_ID)
+    await bot.tree.sync(guild=guild)
+
+    print(f"✅ Logged in as {bot.user} - Commands synced to guild {GUILD_ID}")
 
 keep_alive()
 bot.run(DISCORD_TOKEN)
+
