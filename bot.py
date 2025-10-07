@@ -679,7 +679,10 @@ trade_sessions = load_data()
 
 # ---------- Trade Form Modal ----------
 class TradeForm(Modal, title="📝 Trader Form"):
-    q1 = TextInput(label="Click the button to fill the ticket forms.", style=discord.TextStyle.short)
+    q1 = TextInput(label="1 - What are you trading?", style=discord.TextStyle.short)
+    q2 = TextInput(label="2 - Do you confirm your trade?", style=discord.TextStyle.short)
+    q3 = TextInput(label="3 - Do you know the Middleman process?", style=discord.TextStyle.short)
+    q4 = TextInput(label="4 - Can you join private server link?", style=discord.TextStyle.short)
 
     def __init__(self, trade_id, user_id):
         super().__init__()
@@ -689,13 +692,8 @@ class TradeForm(Modal, title="📝 Trader Form"):
     async def on_submit(self, interaction: discord.Interaction):
         trade_sessions.setdefault(self.trade_id, {"forms": {}, "confirmations": []})
         trade_sessions[self.trade_id]["forms"][self.user_id] = {
-            "What are you trading?": self.q1.value,
-
-            "Do you confirm your trade?": self.q2.value,
-
-            "Do you know the Middleman process?": self.q3.value,
-
-            "Can you join private server link?": self.q4.value,
+            "Click the button underneath to fill the ticket forms": self.q1.value,
+            
         }
         save_data()
 
