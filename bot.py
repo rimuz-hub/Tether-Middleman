@@ -53,14 +53,6 @@ class MyBot(commands.Bot):
         super().__init__(**kwargs)
         self.tree = app_commands.CommandTree(self)
 
-
-# ---------------- Embed Create Slash Command ----------------
-@bot.tree.command(name="embedcreate", description="Create a custom embed")
-@app_commands.guilds(discord.Object(id=1346001535292932148))  # Optional: limit to your guild
-async def embedcreate(interaction: discord.Interaction):
-    """Open a modal to create a multi-line embed"""
-    modal = EmbedModal(interaction)
-    await interaction.response.send_modal(modal)  # no ephemeral message shown
 # -----------------------------
 # Persistent Views
 # -----------------------------
@@ -878,33 +870,8 @@ class EmbedModal(ui.Modal, title="Create Embed"):
         await interaction.response.send_message(embed=embed)
         await self.interaction.followup.send(f"✅ Embed created by {interaction.user.mention}!", ephemeral=True)
 
-# ---------- Slash command ----------
-@bot.tree.command(name="embedcreate", description="Open a modal to create a multi-line embed")
-async def embedcreate(interaction: Interaction):
-    modal = EmbedModal(interaction)
-    await interaction.response.send_modal(modal)
 
-@bot.command(name="cmds")
-async def cmds(ctx: commands.Context):
-    """Displays a list of all commands."""
-    embed = discord.Embed(
-        title="📜 Bot Commands",
-        description="Here are all available commands:",
-        color=discord.Color.blue()
-    )
 
-    for command in bot.commands:
-        # Skip hidden commands if needed
-        if command.hidden:
-            continue
-        # Add command name and short help
-        embed.add_field(
-            name=f"?{command.name}",
-            value=command.help or "No description provided.",
-            inline=False
-        )
-
-    await ctx.send(embed=embed)
 
 # -----------------------------
 # Persistent tickets saving/loading
