@@ -7,6 +7,7 @@ from flask import Flask
 from threading import Thread
 import asyncio
 import json
+from discord.ui import View, Button, Modal, TextInput
 
 # -----------------------------
 # Keep-alive web server (for Replit/Railway)
