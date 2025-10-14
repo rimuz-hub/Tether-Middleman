@@ -495,7 +495,7 @@ class ScmsgJoinLeaveView(ui.View):
 
     @ui.button(label="Join", style=discord.ButtonStyle.success, custom_id="scmsg_join")
     async def join(self, interaction: discord.Interaction, button: ui.Button):
-        await interaction.response.send_message(f"👋 Hi {interaction.user.mention}, great choice, https://discord.gg/Zz2DWM7RvP", ephemeral=True)
+        await interaction.response.send_message(f"👋 Hi {interaction.user.mention}, great choice, https://discord.gg/q9x5VHgmR2", ephemeral=True)
 
     @ui.button(label="Leave", style=discord.ButtonStyle.danger, custom_id="scmsg_leave")
     async def leave(self, interaction: discord.Interaction, button: ui.Button):
