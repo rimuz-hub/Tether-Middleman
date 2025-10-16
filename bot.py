@@ -553,55 +553,115 @@ def save_config(data):
     with open(CONFIG_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
+
 # ---------------------------
-# Command: ?setticketchannel
+# Command: ?setticketcategory
 # ---------------------------
 
 @bot.command(name="setticketcategory")
 @commands.has_permissions(administrator=True)
-async def setticketchannel(ctx, category_id: int):
+async def setticketcategory(ctx, category_id: int):
     """
-    Sets the channel where tickets will be created for this server.
+    Sets the category where tickets will be created for this server.
     Example:
-    ?setticketchannel 123456789012345678
+    ?setticketcategory 123456789012345678
     """
     config = load_config()
     guild_id = str(ctx.guild.id)
 
-    # Make sure the channel exists in this guild
-    channel = ctx.guild.get_category(category_id)
-    if channel is None:
-        await ctx.send("❌ Invalid channel ID or the channel isn't in this server.")
+    # Make sure the category exists in this guild
+    category = ctx.guild.get_category(category_id)
+    if category is None:
+        await ctx.send("❌ Invalid category ID or it isn't in this server.")
         return
 
-    # Save the channel ID for this guild
+    # Save the category ID for this guild
     if guild_id not in config:
         config[guild_id] = {}
 
-    config[guild_id]["ticket_channel"] = category_id
+    config[guild_id]["ticket_category"] = category_id
     save_config(config)
 
-    await ctx.send(f"✅ Ticket channel for **{ctx.guild.name}** has been set to {channel.mention}.")
+    await ctx.send(f"✅ Ticket category for **{ctx.guild.name}** has been set to `{category.name}`.")
+
 
 # ---------------------------
-# Example usage when creating a ticket
+# Helper: Get Ticket Category
 # ---------------------------
 
-async def send_ticket_message(ctx, message: str):
-    """Example of sending a ticket message to the configured channel."""
+def get_ticket_category(guild):
+    """Returns the ticket category for this guild if set, else None."""
     config = load_config()
-    guild_id = str(ctx.guild.id)
-    ticket_channel_id = config.get(guild_id, {}).get("ticket_channel")
+    guild_id = str(guild.id)
+    category_id = config.get(guild_id, {}).get("ticket_category")
+    if category_id:
+        return guild.get_category(category_id)
+    return None
 
-    if ticket_channel_id:
-        channel = bot.get_channel(ticket_category_id)
-        if channel:
-            await channel.send(f"🎟️ New ticket from {ctx.author.mention}:\n{message}")
+
+# ---------------------------
+# Example usage in TicketModal
+# ---------------------------
+
+class TicketModal(ui.Modal, title="Request Middleman"):
+    def __init__(self):
+        super().__init__()
+        self.trader_id_input = ui.TextInput(label="Other Trader Discord ID", required=True)
+        self.giving_input = ui.TextInput(label="What are you giving?", required=True)
+        self.receiving_input = ui.TextInput(label="What are you receiving?", required=True)
+        self.add_item(self.trader_id_input)
+        self.add_item(self.giving_input)
+        self.add_item(self.receiving_input)
+
+    async def on_submit(self, interaction: Interaction):
+        try:
+            other_id = int(self.trader_id_input.value.strip())
+            other_member = await interaction.guild.fetch_member(other_id)
+        except:
+            await interaction.response.send_message("❌ Invalid Discord ID.", ephemeral=True)
             return
-        else:
-            await ctx.send("⚠️ Ticket channel not found. Please reset it using `?setticketchannel <channel_id>`.")
-    else:
-        await ctx.send("⚠️ No ticket channel set. Use `?setticketchannel <channel_id>` first.")
+
+        # ✅ Get saved category (fallback to default if none)
+        category = get_ticket_category(interaction.guild)
+        if not category:
+            category = discord.utils.get(interaction.guild.categories, name="Tickets")
+            if not category:
+                category = await interaction.guild.create_category("Tickets")
+
+        # Create the ticket in the chosen category
+        channel = await interaction.guild.create_text_channel(
+            f"ticket-{interaction.user.name}",
+            category=category,
+            overwrites={
+                interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+                other_member: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+                interaction.guild.get_role(MIDDLEMAN_ROLE_ID): discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            },
+        )
+
+        tickets[channel.id] = {
+            "creator": interaction.user.id,
+            "other": other_id,
+            "giving": self.giving_input.value,
+            "receiving": self.receiving_input.value,
+            "claimed": False,
+        }
+
+        embed = discord.Embed(
+            title="🎫 New Middleman Request",
+            description=(
+                f"**Creator:** {interaction.user.mention}\n"
+                f"**Other Trader:** <@{other_id}>\n\n"
+                f"**Giving:** {self.giving_input.value}\n"
+                f"**Receiving:** {self.receiving_input.value}\n\n"
+                f"⏳ A middleman will claim this ticket soon."
+            ),
+            color=discord.Color.green(),
+        )
+        await channel.send(f"<@&{MIDDLEMAN_ROLE_ID}>", embed=embed, view=ClaimView(channel.id))
+        await interaction.response.send_message(f"✅ Ticket created: {channel.mention}", ephemeral=True)
+
 
 # -----------------------------
 # Trigger messages handler (allow triggers inside any text)
