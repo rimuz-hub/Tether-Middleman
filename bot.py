@@ -530,6 +530,79 @@ Please note that you need to fake vouch the mm that mmd you before joining us"""
     view = ScmsgJoinLeaveView(timeout=None)
     await ctx.send(embed=embed, view=view)
 
+
+CONFIG_FILE = "config.json"
+
+# ---------------------------
+# Helper Functions
+# ---------------------------
+
+def load_config():
+    """Loads config.json, creates it if missing."""
+    if not os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "w") as f:
+            json.dump({}, f)
+    with open(CONFIG_FILE, "r") as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return {}  # Return empty if file corrupted
+
+def save_config(data):
+    """Saves updated data to config.json."""
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+# ---------------------------
+# Command: ?setticketchannel
+# ---------------------------
+
+@bot.command(name="setticketcategory")
+@commands.has_permissions(administrator=True)
+async def setticketchannel(ctx, category_id: int):
+    """
+    Sets the channel where tickets will be created for this server.
+    Example:
+    ?setticketchannel 123456789012345678
+    """
+    config = load_config()
+    guild_id = str(ctx.guild.id)
+
+    # Make sure the channel exists in this guild
+    channel = ctx.guild.get_category(category_id)
+    if channel is None:
+        await ctx.send("❌ Invalid channel ID or the channel isn't in this server.")
+        return
+
+    # Save the channel ID for this guild
+    if guild_id not in config:
+        config[guild_id] = {}
+
+    config[guild_id]["ticket_channel"] = category_id
+    save_config(config)
+
+    await ctx.send(f"✅ Ticket channel for **{ctx.guild.name}** has been set to {channel.mention}.")
+
+# ---------------------------
+# Example usage when creating a ticket
+# ---------------------------
+
+async def send_ticket_message(ctx, message: str):
+    """Example of sending a ticket message to the configured channel."""
+    config = load_config()
+    guild_id = str(ctx.guild.id)
+    ticket_channel_id = config.get(guild_id, {}).get("ticket_channel")
+
+    if ticket_channel_id:
+        channel = bot.get_channel(ticket_category_id)
+        if channel:
+            await channel.send(f"🎟️ New ticket from {ctx.author.mention}:\n{message}")
+            return
+        else:
+            await ctx.send("⚠️ Ticket channel not found. Please reset it using `?setticketchannel <channel_id>`.")
+    else:
+        await ctx.send("⚠️ No ticket channel set. Use `?setticketchannel <channel_id>` first.")
+
 # -----------------------------
 # Trigger messages handler (allow triggers inside any text)
 # -----------------------------
